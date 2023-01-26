@@ -1,16 +1,21 @@
 import os
+import pathlib
 import re
 from argparse import ArgumentParser
+from itertools import combinations_with_replacement
 from typing import Dict, List
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # TODO: Plot matrix overlapping
 import numpy as np
+import pandas as pd
 import uproot as ur
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    SAFileNotFoundError, SAValueError)
+from utils.calc_num_combs import calc_num_combs
+from utils.df_mapping_dict import df_mapping_dict
 from utils.info import info
 
 # MAIN
@@ -76,7 +81,10 @@ def main() -> int:
         print(f"- {analysis_name}")
     print("\n")
 
-    # 3.1) For analyses that are not combined
+    # 3.1) CONCATENATION OF EVENT SIGNAL REGION MATRICES
+    event_SR_matrix_list: List[np.array] = []
+    sr_names: List[str] = []
+
     print("Files preprocessing:\n")
     for file_idx, file_path in enumerate(tqdm(file_paths)):
         # opening the file
@@ -93,7 +101,67 @@ def main() -> int:
             # iterating through signal regions to extract the
             # arrays and store row wise
             for sr_idx, sr in enumerate(signal_regions):
+                sr_names.append(sr)
                 events[:, sr_idx] = ttree_arrays[sr]
+            # list of matrices
+            event_SR_matrix_list.append(events)
+
+    # concatenate the matrices
+    event_SR_matrix_combined: np.array = np.concatenate(
+        event_SR_matrix_list, axis=1)
+    print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
+          f"Number of SRs: {event_SR_matrix_combined.shape[1]}.")
+
+    # convert into dataframe
+    df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
+        data=event_SR_matrix_combined)
+    df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
+        columns=df_mapping_dict(sr_names))
+
+    # print merge results to the console
+    print(
+        f"\nHead of merged dataframe:\n\n{df_event_SR_matrix_combined.head()}")
+
+    # 3.2) OVERLAP CALCULATION
+    # for overlap calculation the events and the eventWeights
+    # are deleted
+    for _ in analysis_names:
+        df_event_SR = df_event_SR_matrix_combined.drop(
+            columns=["Event", "eventWeight"])
+    # write to csv as a part of the results
+    df_event_SR.to_csv(
+        str(pathlib.Path(__file__).parent.resolve()) +
+        "/../results/event_SR.csv",
+        index=False, header=True)
+    # combinatorics through the different columns
+    # generate combinations with replacement
+    column_names: List[str] = df_event_SR.columns
+    combs = combinations_with_replacement(column_names, r=2)
+    print("\nTo do are a total of "
+          f"{calc_num_combs(len(column_names))} combinations.\n")
+
+    SR_SR_matrix: np.array = np.zeros(
+        (len(column_names), len(column_names)))
+    # create inverse mapping dict for getting access to the
+    # index via the signal region name
+    inv_mapping: Dict[str, int] = df_mapping_dict(column_names, inv=True)
+
+    # iterate through the combs
+    for comb in tqdm(combs):
+        # shared event calculates a vector that tells which
+        # events actually are accepted for both signal regions
+        shared_events: np.array = np.array(
+            df_event_SR[comb[0]]*df_event_SR[comb[-1]], dtype=bool)
+        i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
+        SR_SR_matrix[i, j] = np.sum(shared_events)
+    # print signal region matrix
+    print("Signal regions from the Analyses provided are shown in the "
+          f" following matrix:\n\n{SR_SR_matrix}.")
+
+    # save in dataframe and save to csv
+    df_SR_SR: pd.DataFrame = pd.DataFrame(SR_SR_matrix, columns=column_names)
+    df_SR_SR.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
+                    "/../results/SR_SR.csv", index=False, header=True)
 
     return 0
 
