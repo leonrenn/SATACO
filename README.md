@@ -1,5 +1,14 @@
 # SATACO
 On top tool for Simple Analysis (SA) implementing algorithms from Testing Analyses' COrrelations (TACO).
+[SimpleAnalysis](https://simpleanalysis.docs.cern.ch)
+[TACO](https://gitlab.com/t-a-c-o/)
+
+## Requirements
+
+To install the requirements do:
+```sh
+pip install -r requirements.txt
+```
 
 ## CLI
 

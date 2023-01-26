@@ -1,0 +1,8 @@
+
+---------------------------------------
+Files generated during analysis and
+saved under ../results/:
+- event_SR.csv
+- SR_SR.csv
+- SR_SR.png 
+---------------------------------------

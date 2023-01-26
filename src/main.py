@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import combinations_with_replacement
 from typing import Dict, List
 
-import matplotlib.pyplot as plt  # TODO: Plot matrix overlapping
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import uproot as ur
@@ -17,6 +17,7 @@ from exceptions.exceptions import (NonSimpleAnalysisFormat,
 from utils.calc_num_combs import calc_num_combs
 from utils.df_mapping_dict import df_mapping_dict
 from utils.info import info
+from utils.summary import summary
 
 # MAIN
 
@@ -175,7 +176,11 @@ def main() -> int:
     ax.xaxis.set_ticks_position('both')
     ax.set_xticklabels(column_names, minor=False)
     ax.set_yticklabels(column_names, minor=False)
-    plt.show()
+    fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
+                "/../results/SR_SR.png")
+
+    # 5) SUMMARY
+    summary()
     return 0
 
 
