@@ -1,7 +1,11 @@
 ---------------------------------------
 Based on the Analysis Tools:
-- SimpleAnalysis
+- SA (SimpleAnalysis)
 - TACO (Testing Analyses' COrrelations)
 
-Author: Leon Renn (TUM)
+For data generation use SA with the flag [-n]
+which creates a ntuple.
+
+Author: Leon Renn (TUM) 2023
+License: MIT
 ---------------------------------------

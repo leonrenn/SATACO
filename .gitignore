@@ -130,3 +130,10 @@ dmypy.json
 
 # VS Code
 .vscode
+
+# Artifacts from Copy from Docker Container
+/data/workdir
+
+# Files to play around
+src/notebook.ipynb
+
