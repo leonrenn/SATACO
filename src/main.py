@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 from itertools import combinations_with_replacement
 from typing import Dict, List
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import uproot as ur
@@ -14,17 +13,16 @@ from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    SAFileNotFoundError, SAValueError)
-from utils.calc_num_combs import calc_num_combs
-from utils.df_mapping_dict import df_mapping_dict
-from utils.info import info
-from utils.summary import summary
+from utils.functools import calc_num_combs, df_mapping_dict
+from utils.plotting import SR_matrix_plotting
+from utils.printer import info, sataco, summary
 
 # MAIN
 
 
 def main() -> int:
     # 0) START
-    print("\t\tSATACO\t\t")
+    sataco()
     info()
 
     # 1) ARGUMENTS FROM CLI
@@ -165,19 +163,8 @@ def main() -> int:
                     "/../results/SR_SR.csv", index=False, header=True)
 
     # 4) VISUALIZATION
-    fig, ax = plt.subplots()
-    ax.pcolor(SR_SR_matrix, cmap=plt.cm.Blues)
-    # put the major ticks at the middle of each cell
-    ax.set_xticks(np.arange(len(column_names)) + 0.5, minor=False)
-    ax.set_yticks(np.arange(len(column_names)) + 0.5, minor=False)
-    # want a more natural, table-like display
-    ax.invert_yaxis()
-    ax.xaxis.tick_top()
-    ax.xaxis.set_ticks_position('both')
-    ax.set_xticklabels(column_names, minor=False)
-    ax.set_yticklabels(column_names, minor=False)
-    fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
-                "/../results/SR_SR.png")
+    SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
+                       column_names=column_names)
 
     # 5) SUMMARY
     summary()

@@ -6,7 +6,7 @@ def df_mapping_dict(sr_names: List[str], inv: bool = False) -> Dict[int, str]:
     renaming and getting key rapidly
 
     Args:
-        sr_names (List[str]): 
+        sr_names (List[str]):
         inv (bool): Inverts the dictionary. Defaults to False.
 
     Returns:
@@ -18,3 +18,17 @@ def df_mapping_dict(sr_names: List[str], inv: bool = False) -> Dict[int, str]:
     if inv is True:
         mapping_dict = {v: k for k, v in mapping_dict.items()}
     return mapping_dict
+
+
+def calc_num_combs(len_sr_names: int) -> int:
+    """Formula to calculate the number of
+    combinations with replacement for two
+    signal regions.
+
+    Args:
+        len_sr_names (int): Length of list of signal regions.
+
+    Returns:
+        int: Number of combinations.
+    """
+    return int((len_sr_names + 1) * len_sr_names/2)
