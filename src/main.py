@@ -27,6 +27,9 @@ def main() -> int:
 
     # 1) ARGUMENTS FROM CLI
     # parse for arguments from CLI and provide help
+    # TODO: Extend the parser with various functions. Ideas would be to force
+    # no command line output [-fe, --force_empty] and to configure a logger
+    # with [-l, --logger]
     parser: ArgumentParser = ArgumentParser()
     parser.add_argument("-r", "--root", type=str, required=True,
                         help=".root files as input from SimpleAnalysis Tool.")

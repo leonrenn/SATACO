@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# TODO: Include exceptions
 def SR_matrix_plotting(SR_SR_matrix: np.array,
                        column_names: List[str],
                        show: bool = False) -> None:
