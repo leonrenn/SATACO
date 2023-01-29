@@ -12,8 +12,11 @@ from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
-                                   SAFileNotFoundError, SAValueError)
-from utils.functools import calc_num_combs, df_mapping_dict
+                                   NoParserArgumentsError,
+                                   SADirectoryNotFoundError,
+                                   SAFileNotFoundError, SAValueError,
+                                   SAWrongArgument)
+from utils.functools import calc_num_combs, calc_pearson_corr, df_mapping_dict
 from utils.plotting import SR_matrix_plotting
 from utils.printer import info, sataco, summary
 
@@ -27,25 +30,56 @@ def main() -> int:
 
     # 1) ARGUMENTS FROM CLI
     # parse for arguments from CLI and provide help
-    # TODO: Extend the parser with various functions. Ideas would be to force
-    # no command line output [-fe, --force_empty] and to configure a logger
-    # with [-l, --logger]
+
     parser: ArgumentParser = ArgumentParser()
-    parser.add_argument("-r", "--root", type=str, required=True,
+    parser.add_argument("-r", "--root", type=str, required=False,
                         help=".root files as input from SimpleAnalysis Tool.")
-    # parser.add_argument("-d","--droot", type=str, required=True,
-    #                    help="Directory with .root files
-    #                    from SimpleAnalysis Tool.")
+
+    parser.add_argument("-d", "--droot", type=str, required=False,
+                        help="Directory with .root files"
+                        "from SimpleAnalysis Tool.")
     parser_dict: Dict[str, str] = vars(parser.parse_args())
-    # split files in csv format from CLI
-    file_paths: List[str] = parser_dict["root"].split(",")
-    analysis_names: List[str] = []
+
+    try:
+        file_paths: List[str] = []
+        if parser_dict["root"] is not None and parser_dict["droot"] is None:
+            try:
+                if os.path.isdir(parser_dict["root"]) is True:
+                    raise SAWrongArgument
+                # split files in csv format from CLI
+                file_paths = parser_dict["root"].split(",")
+            except SAWrongArgument:
+                print("The argument is a directory '"
+                      f"{parser_dict['root']}',\n"
+                      "but a file is needed for this flag.")
+                return 1
+        elif parser_dict["root"] is None and parser_dict["droot"] is not None:
+            print(f"Entering given directory: {parser_dict['droot']}")
+            try:
+                if os.path.exists(parser_dict["droot"]) is True:
+                    file_paths = os.listdir(parser_dict["droot"])
+                    file_paths = [
+                        f"{parser_dict['droot']}/{path}"
+                        for path in file_paths]
+                else:
+                    raise SADirectoryNotFoundError
+            except SADirectoryNotFoundError:
+                print(f"The directory '{parser_dict['droot']}' "
+                      "was not found. Exit.")
+                return 2
+        elif parser_dict["root"] is None and parser_dict["droot"] is None:
+            raise NoParserArgumentsError
+    except NoParserArgumentsError:
+        print("No arguments were given via the command line, although required"
+              "at least one of [-r] or [-d].")
+        return 3
 
     # 2) CHECK FOR EXISTENCE & FOR SA-FORMAT (BEFORE SCAN)
     # the specific output format is specified under
     # https://simpleanalysis.docs.cern.ch in the OUTPUT section and is
     # dependend on the flags that were set for the analysis
     print("Checking correctness of input:\n")
+    analysis_names: List[str] = []
     try:
         for file_path in tqdm(file_paths):
             analysis_name: str = os.path.basename(file_path).strip(".root")
@@ -61,12 +95,12 @@ def main() -> int:
                 raise NonSimpleAnalysisFormat
     except SAFileNotFoundError:
         print(f"The file {file_path} could not be found. Exit.")
-        return 1
+        return 4
 
     except SAValueError:
         print(f"The file {file_path} could not be read \n"
               "with the uproot python module. Exit.")
-        return 2
+        return 5
 
     except NonSimpleAnalysisFormat:
         print(f"The file {file_path} is in the format of \n"
@@ -74,7 +108,7 @@ def main() -> int:
               "expected SA format [-n] of {'ntuple;1': 'TTree'}.\n"
               "Do not use option '-o' in simpleAnalysis.\n"
               "Exit.")
-        return 3
+        return 6
 
     # 3) RUN ANALYSIS ON INPUT
     # info about which analyses where provided to SATACO
@@ -169,7 +203,16 @@ def main() -> int:
     SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
                        column_names=column_names)
 
-    # 5) SUMMARY
+    # 5) CALCULATION OF PEARSON COEFFICIENT
+    pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix)
+    # TODO: Specify with event bins and event weights
+    # a later apply cut to the pearson coefficients
+
+    # 6) PATH FINDING AS COMBINATION
+    # TODO: Implement path finding algortihm from
+    # TACO.
+
+    # 7) SUMMARY
     summary()
     return 0
 

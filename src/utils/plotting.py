@@ -5,10 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# TODO: Include exceptions
 def SR_matrix_plotting(SR_SR_matrix: np.array,
                        column_names: List[str],
                        show: bool = False) -> None:
+    """Generates a figure of the SR matrix showing
+    which SR regions share the same events.
+
+    Args:
+        SR_SR_matrix (np.array): SR_SR - matrix in numpy format.
+        column_names (List[str]): Names of the SR regions.
+        show (bool, optional): Shows figure while 
+        running the analysis run. Defaults to False.
+    """
     fig, ax = plt.subplots()
     ax.pcolor(SR_SR_matrix, cmap=plt.cm.Blues)
     # put the major ticks at the middle of each cell

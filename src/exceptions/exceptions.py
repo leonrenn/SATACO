@@ -16,3 +16,23 @@ class SAValueError(ValueError):
     they are in the wrong format.
     """
     pass
+
+
+class NoParserArgumentsError(Exception):
+    """Raised when no arguments are given through 
+    the command line."""
+    pass
+
+
+class SADirectoryNotFoundError(NotADirectoryError):
+    """Raised when the directory with the root files
+    are not found at the beginning of the SATACO programm.
+    """
+    pass
+
+
+class SAWrongArgument(IsADirectoryError):
+    """Raised when the argument is a directory but a 
+    file is needed for the used [-r] flag.
+    """
+    pass

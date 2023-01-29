@@ -2,6 +2,9 @@ import pathlib
 
 
 def info() -> None:
+    """Prints info on the command line stored
+    in the info.txt file.
+    """
     info_file_path = str(pathlib.Path(
         __file__).parent.resolve()) + "/info.txt"
     info_file = open(info_file_path)
@@ -12,6 +15,9 @@ def info() -> None:
 
 
 def summary() -> None:
+    """Prints summary on the command line stored
+    in the summary.txt file.
+    """
     summary_file_path = str(pathlib.Path(
         __file__).parent.resolve()) + "/summary.txt"
     summary_file = open(summary_file_path)
@@ -22,6 +28,8 @@ def summary() -> None:
 
 
 def sataco() -> None:
+    """Prints SATACO letters from sataco.txt file.
+    """
     sataco_file_path = str(pathlib.Path(
         __file__).parent.resolve()) + "/sataco.txt"
     sataco_file = open(sataco_file_path)
