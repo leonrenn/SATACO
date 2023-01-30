@@ -36,3 +36,10 @@ class SAWrongArgument(IsADirectoryError):
     file is needed for the used [-r] flag.
     """
     pass
+
+
+class NotARootFile(ValueError):
+    """Raised when the file that uproot is trying
+    to read is not a root file.
+    """
+    pass

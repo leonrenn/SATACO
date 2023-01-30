@@ -1,6 +1,5 @@
 import os
 import pathlib
-import re
 from argparse import ArgumentParser
 from itertools import combinations_with_replacement
 from typing import Dict, List
@@ -12,7 +11,7 @@ from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
-                                   NoParserArgumentsError,
+                                   NoParserArgumentsError, NotARootFile,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
@@ -87,20 +86,23 @@ def main() -> int:
 
             if os.path.exists(file_path) is False:
                 raise SAFileNotFoundError
-            temp: ReadOnlyFile = ur.open(file_path)
+            try:
+                temp: ReadOnlyFile = ur.open(file_path)
+            except NotARootFile:
+                print(f"The file {file_path} is not in the root format. Exit.")
+                return 4
             classnames = temp.classnames()
             temp.close()
-            if (str(classnames) != "{'ntuple;1': 'TTree'}" and
-                    re.search(".*'ntuple;1'.*", str(classnames)) is not None):
+            if str(classnames).find("'ntuple;1': 'TTree'") == -1:
                 raise NonSimpleAnalysisFormat
     except SAFileNotFoundError:
         print(f"The file {file_path} could not be found. Exit.")
-        return 4
+        return 5
 
     except SAValueError:
         print(f"The file {file_path} could not be read \n"
               "with the uproot python module. Exit.")
-        return 5
+        return 6
 
     except NonSimpleAnalysisFormat:
         print(f"The file {file_path} is in the format of \n"
@@ -108,7 +110,7 @@ def main() -> int:
               "expected SA format [-n] of {'ntuple;1': 'TTree'}.\n"
               "Do not use option '-o' in simpleAnalysis.\n"
               "Exit.")
-        return 6
+        return 7
 
     # 3) RUN ANALYSIS ON INPUT
     # info about which analyses where provided to SATACO
@@ -169,39 +171,56 @@ def main() -> int:
         str(pathlib.Path(__file__).parent.resolve()) +
         "/../results/event_SR.csv",
         index=False, header=True)
+
     # combinatorics through the different columns
     # generate combinations with replacement
     column_names: List[str] = df_event_SR.columns
-    combs = combinations_with_replacement(column_names, r=2)
+    # more efficient combining -> leave out all SR where no events are accepted
+    # at all
+    print("\nZero columns where removed from the analysis:\n")
+    non_zero_column_names: List[str] = []
+
+    for name in column_names:
+        if df_event_SR[name].any():
+            non_zero_column_names.append(name)
+        else:
+            print(f"\t - Removed Signal Region: {name}")
+
+    combs = combinations_with_replacement(non_zero_column_names, r=2)
     print("\nTo do are a total of "
-          f"{calc_num_combs(len(column_names))} combinations.\n")
+          f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
 
     SR_SR_matrix: np.array = np.zeros(
-        (len(column_names), len(column_names)))
+        (len(non_zero_column_names), len(non_zero_column_names)))
     # create inverse mapping dict for getting access to the
     # index via the signal region name
-    inv_mapping: Dict[str, int] = df_mapping_dict(column_names, inv=True)
+    inv_mapping: Dict[str, int] = df_mapping_dict(
+        non_zero_column_names, inv=True)
 
     # iterate through the combs
-    for comb in tqdm(combs):
+    for comb in tqdm(combs, leave=True):
         # shared event calculates a vector that tells which
         # events actually are accepted for both signal regions
         shared_events: np.array = np.array(
-            df_event_SR[comb[0]]*df_event_SR[comb[-1]], dtype=bool)
+            df_event_SR[comb[0]]*df_event_SR[comb[-1]], dtype=bool) * np.array(
+            df_event_SR[comb[0]] + df_event_SR[comb[-1]], dtype=float)
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
         SR_SR_matrix[i, j] = np.sum(shared_events)
+        if i != j:
+            SR_SR_matrix[j, i] = np.sum(shared_events)
     # print signal region matrix
     print("Signal regions from the Analyses provided are shown in the "
           f" following matrix:\n\n{SR_SR_matrix}.")
 
     # save in dataframe and save to csv
-    df_SR_SR: pd.DataFrame = pd.DataFrame(SR_SR_matrix, columns=column_names)
+    df_SR_SR: pd.DataFrame = pd.DataFrame(
+        SR_SR_matrix, columns=non_zero_column_names)
     df_SR_SR.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
                     "/../results/SR_SR.csv", index=False, header=True)
 
     # 4) VISUALIZATION
     SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
-                       column_names=column_names)
+                       column_names=non_zero_column_names)
 
     # 5) CALCULATION OF PEARSON COEFFICIENT
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix)

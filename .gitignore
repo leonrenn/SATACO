@@ -133,7 +133,9 @@ dmypy.json
 
 # Artifacts from Copy from Docker Container
 /data/workdir
+/data/100293
 
 # Files to play around
 src/notebook.ipynb
+
 
