@@ -15,3 +15,11 @@
   
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
+
+@software{simpleAnalysis,
+  author = {{ATLAS}},
+  title = {Simple Analysis},
+  url = {https://simpleanalysis.docs.cern.ch},
+  version = {1.1.0},
+  date = {2022-02-16},
+}
