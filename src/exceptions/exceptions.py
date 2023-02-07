@@ -32,7 +32,7 @@ class SADirectoryNotFoundError(NotADirectoryError):
 
 
 class SAWrongArgument(IsADirectoryError):
-    """Raised when the argument is a directory but a 
+    """Raised when the argument is a directory but a
     file is needed for the used [-r] flag.
     """
     pass
@@ -42,4 +42,11 @@ class NotARootFile(ValueError):
     """Raised when the file that uproot is trying
     to read is not a root file.
     """
+    pass
+
+
+class NotEnoughStatistcis(Exception):
+    """Raised when the acceptance matrix has not
+    aquired enough statistics. (Maybe delete exception
+    because analysis must continue in either way)"""
     pass

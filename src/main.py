@@ -12,10 +12,12 @@ from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
+                                   NotEnoughStatistcis,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
-from utils.functools import calc_num_combs, calc_pearson_corr, df_mapping_dict
+from utils.functools import (calc_num_combs, calc_pearson_corr,
+                             check_sufficient_statistics, df_mapping_dict)
 from utils.plotting import SR_matrix_plotting
 from utils.printer import info, sataco, summary
 
@@ -221,17 +223,27 @@ def main() -> int:
     # 4) VISUALIZATION
     SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
                        column_names=non_zero_column_names)
+    # 5) SUFFICIENT NUMBER OF EVENTS CHECK
+    try:
+        check_sufficient_statistics(
+            SR_SR_matrix=SR_SR_matrix,
+            event_num=df_event_SR_matrix_combined.shape[0])
+    except NotEnoughStatistcis:
+        print("The accepatance matrix has not had enough entries \n"
+              "for validating an overlap.\n"
+              "Exit.")
+        return 8
 
-    # 5) CALCULATION OF PEARSON COEFFICIENT
+    # 6) CALCULATION OF PEARSON COEFFICIENT
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix)
     # TODO: Specify with event bins and event weights
     # a later apply cut to the pearson coefficients
 
-    # 6) PATH FINDING AS COMBINATION
+    # 7) PATH FINDING AS COMBINATION
     # TODO: Implement path finding algortihm from
     # TACO.
 
-    # 7) SUMMARY
+    # 8) SUMMARY
     summary()
     return 0
 

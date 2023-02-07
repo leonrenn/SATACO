@@ -2,6 +2,8 @@ from typing import Dict, List
 
 import numpy as np
 
+from exceptions.exceptions import NotEnoughStatistcis
+
 
 def df_mapping_dict(sr_names: List[str], inv: bool = False) -> Dict[int, str]:
     """Generate mapping dictionary for dataframe
@@ -34,6 +36,15 @@ def calc_num_combs(len_sr_names: int) -> int:
         int: Number of combinations.
     """
     return int((len_sr_names + 1) * len_sr_names/2)
+
+
+def check_sufficient_statistics(SR_SR_matrix: np.array,
+                                event_num: int,
+                                confidence: float = 0.95) -> None:
+    # TODO: Algorithm like in TACO that checks if enough data has
+    # been gathered for further staistic analysis
+    # https://gitlab.com/t-a-c-o/taco_code/-/blob/master/codes/accepter_v2.py
+    raise NotEnoughStatistcis
 
 
 def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
