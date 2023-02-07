@@ -44,7 +44,9 @@ def check_sufficient_statistics(SR_SR_matrix: np.array,
     # TODO: Algorithm like in TACO that checks if enough data has
     # been gathered for further staistic analysis
     # https://gitlab.com/t-a-c-o/taco_code/-/blob/master/codes/accepter_v2.py
-    raise NotEnoughStatistcis
+    if False:
+        raise NotEnoughStatistcis
+    return
 
 
 def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
