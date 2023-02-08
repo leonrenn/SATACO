@@ -175,7 +175,7 @@ def main() -> int:
     df_event_SR.to_csv(
         str(pathlib.Path(__file__).parent.resolve()) +
         "/../results/event_SR.csv",
-        index=False, header=True)
+        index=False, header=True, compression="gzip")
 
     # combinatorics through the different columns
     # generate combinations with replacement
@@ -221,7 +221,10 @@ def main() -> int:
     df_SR_SR: pd.DataFrame = pd.DataFrame(
         SR_SR_matrix, columns=non_zero_column_names)
     df_SR_SR.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
-                    "/../results/SR_SR.csv", index=False, header=True)
+                    "/../results/SR_SR.csv",
+                    index=False,
+                    header=True,
+                    compression="gzip")
 
     # 4) VISUALIZATION
     SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
