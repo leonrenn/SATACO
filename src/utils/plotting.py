@@ -22,7 +22,7 @@ def SR_matrix_plotting(SR_SR_matrix: np.array,
     # using rc function
     plt.rc('font', **font)
     fig, ax = plt.subplots(figsize=(14, 14))
-    ax.pcolor(SR_SR_matrix, cmap=plt.cm.Blues, vmin=0, vmax=1)
+    pcol = ax.pcolor(SR_SR_matrix, cmap=plt.cm.Blues)  # , vmin=0, vmax=1)
     # put the major ticks at the middle of each cell
     ax.set_xticks(np.arange(len(column_names)) + 0.5,
                   minor=False)
@@ -37,6 +37,8 @@ def SR_matrix_plotting(SR_SR_matrix: np.array,
                        rotation=45)
     ax.set_yticklabels(column_names,
                        minor=False)
+
+    fig.colorbar(pcol, ax=ax, orientation='vertical')
     fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
                 "/../../results/SR_SR.png")
 

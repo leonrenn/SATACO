@@ -4,3 +4,4 @@ pandas
 uproot
 awkward
 tqdm
+networkx

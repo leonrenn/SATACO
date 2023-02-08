@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 import numpy as np
+from networkx.classes import DiGraph
 
 from exceptions.exceptions import NotEnoughStatistcis
 
@@ -61,3 +62,11 @@ def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
         np.array: Coefficient matrix.
     """
     return np.corrcoef(SR_SR_matrix)
+
+
+def transform_overlap_digraph(SR_SR_matrix: np.array) -> DiGraph:
+    pass
+
+
+def find_best_combination(SR_digraph: DiGraph) -> List[str]:
+    pass

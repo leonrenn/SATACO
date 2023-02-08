@@ -7,19 +7,22 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import uproot as ur
+from networkx.algorithms import dag_longest_path
+from networkx.classes import DiGraph
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
-from exceptions.exceptions import (NonSimpleAnalysisFormat,
+from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
                                    NotEnoughStatistcis,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
 from utils.functools import (calc_num_combs, calc_pearson_corr,
-                             check_sufficient_statistics, df_mapping_dict)
+                             check_sufficient_statistics, df_mapping_dict,
+                             find_best_combination, transform_overlap_digraph)
 from utils.plotting import SR_matrix_plotting
-from utils.printer import info, sataco, summary
+from utils.printer import info, result, sataco, summary
 
 # MAIN
 
@@ -223,7 +226,9 @@ def main() -> int:
     # 4) VISUALIZATION
     SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
                        column_names=non_zero_column_names)
+
     # 5) SUFFICIENT NUMBER OF EVENTS CHECK
+    # -> ACCEPTANCE MATRIX
     try:
         check_sufficient_statistics(
             SR_SR_matrix=SR_SR_matrix,
@@ -234,14 +239,33 @@ def main() -> int:
               "Exit.")
         return 8
 
-    # 6) CALCULATION OF PEARSON COEFFICIENT
-    pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix)
+    # 6) BOOTSTRAPPING PROCEDURE ??
+    # TODO: Implement bootstrapping procedure
+
+    # 7) CALCULATION OF PEARSON COEFFICIENT AND CUTTING
+    pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
     # TODO: Specify with event bins and event weights
     # a later apply cut to the pearson coefficients
+    # -> OVERLAP MATRIX
 
-    # 7) PATH FINDING AS COMBINATION
-    # TODO: Implement path finding algortihm from
-    # TACO.
+    # 8) GRAPH ALGORITHM
+    # Best combination of SRs and longest path through matrix
+    # 8.1) Put the lower triangle of the matrix into graph form
+    # the graph is a directed acyclic graph (dag)
+    SR_digraph: DiGraph = transform_overlap_digraph(
+        SR_SR_matrix=SR_SR_matrix)
+
+    # 8.2) Dag longest path algorithm as best combination
+    try:
+        best_comb_SR: List[str] = find_best_combination(SR_digraph=SR_digraph)
+    except NoGraphSolution:
+        print("Networkx algorithm does no find a solution\n"
+              "(unfeasible). It is likely that the graph is incorrect.\n"
+              "Exit.")
+        return 9
+
+    # 8.3) Print best signal combination
+    result(best_comb_SR=best_comb_SR)
 
     # 8) SUMMARY
     summary()
