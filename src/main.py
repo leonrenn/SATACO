@@ -268,7 +268,7 @@ def main() -> int:
         return 9
 
     # 8.3) Print best signal combination
-    result(best_comb_SR=best_comb_SR)
+    # result(best_comb_SR=best_comb_SR)
 
     # 8) SUMMARY
     summary()
