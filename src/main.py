@@ -18,10 +18,11 @@ from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
-from utils.functools import (calc_num_combs, calc_pearson_corr,
+from utils.functions import (calc_num_combs, calc_pearson_corr,
                              check_sufficient_statistics, df_mapping_dict,
-                             find_best_combination, transform_overlap_digraph)
-from utils.plotting import SR_matrix_plotting
+                             find_best_combination, threshold_corr_matrix,
+                             transform_overlap_digraph)
+from utils.plotting import SR_matrix_plotting, corr_matrix_plotting
 from utils.printer import info, result, sataco, summary
 
 # MAIN
@@ -98,7 +99,11 @@ def main() -> int:
                 return 4
             classnames = temp.classnames()
             temp.close()
-            if str(classnames).find("'ntuple;1': 'TTree'") == -1:
+            # TODO: Change this line and maybe also when accessing
+            # the arrays because the analyses do not have all this
+            # kind of structure.
+            # find("'ntuple;1': 'TTree'") == -1:
+            if str(classnames).find("ntuple") == -1:
                 raise NonSimpleAnalysisFormat
     except SAFileNotFoundError:
         print(f"The file {file_path} could not be found. Exit.")
@@ -112,7 +117,7 @@ def main() -> int:
     except NonSimpleAnalysisFormat:
         print(f"The file {file_path} is in the format of \n"
               f"{str(temp.classnames())}. This is not in the\n"
-              "expected SA format [-n] of {'ntuple;1': 'TTree'}.\n"
+              "expected SA format [-n] of {...'ntuple;_num_': 'TTree'...}.\n"
               "Do not use option '-o' in simpleAnalysis.\n"
               "Exit.")
         return 7
@@ -161,10 +166,6 @@ def main() -> int:
     df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
         columns=df_mapping_dict(sr_names))
 
-    # print merge results to the console
-    print(
-        f"\nHead of merged dataframe:\n\n{df_event_SR_matrix_combined.head()}")
-
     # 3.2) OVERLAP CALCULATION
     # for overlap calculation the events and the eventWeights
     # are deleted
@@ -182,7 +183,7 @@ def main() -> int:
     column_names: List[str] = df_event_SR.columns
     # more efficient combining -> leave out all SR where no events are accepted
     # at all
-    print("\nZero columns where removed from the analysis:\n")
+    print("\nZero columns are removed:\n")
     non_zero_column_names: List[str] = []
 
     for name in column_names:
@@ -190,6 +191,8 @@ def main() -> int:
             non_zero_column_names.append(name)
         else:
             print(f"\t - Removed Signal Region: {name}")
+    print(
+        f"Removed in total: {len(column_names) - len(non_zero_column_names)}")
 
     combs = combinations_with_replacement(non_zero_column_names, r=2)
     print("\nTo do are a total of "
@@ -206,16 +209,14 @@ def main() -> int:
     for comb in tqdm(combs, leave=True):
         # shared event calculates a vector that tells which
         # events actually are accepted for both signal regions
+        # devide by two because take mean of both events
         shared_events: np.array = np.array(
             df_event_SR[comb[0]]*df_event_SR[comb[-1]], dtype=bool) * np.array(
-            df_event_SR[comb[0]] + df_event_SR[comb[-1]], dtype=float)
+            df_event_SR[comb[0]] + df_event_SR[comb[-1]], dtype=float)/2
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
         SR_SR_matrix[i, j] = np.sum(shared_events)
         if i != j:
             SR_SR_matrix[j, i] = np.sum(shared_events)
-    # print signal region matrix
-    print("Signal regions from the Analyses provided are shown in the "
-          f" following matrix:\n\n{SR_SR_matrix}.")
 
     # save in dataframe and save to csv
     df_SR_SR: pd.DataFrame = pd.DataFrame(
@@ -247,9 +248,23 @@ def main() -> int:
 
     # 7) CALCULATION OF PEARSON COEFFICIENT AND CUTTING
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
+    # save in dataframe and save to csv
+    df_corr: pd.DataFrame = pd.DataFrame(
+        pearson_coeff, columns=non_zero_column_names)
+    df_corr.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
+                   "/../results/correlations.csv",
+                   index=False,
+                   header=True,
+                   compression="gzip")
+
     # TODO: Specify with event bins and event weights
     # a later apply cut to the pearson coefficients
     # -> OVERLAP MATRIX
+    corr_matrix_binary = threshold_corr_matrix(
+        correlation_matrix=pearson_coeff)
+    print(corr_matrix_binary)
+    corr_matrix_plotting(correlation_matrix=corr_matrix_binary,
+                         column_names=non_zero_column_names)
 
     # 8) GRAPH ALGORITHM
     # Best combination of SRs and longest path through matrix
@@ -259,13 +274,13 @@ def main() -> int:
         SR_SR_matrix=SR_SR_matrix)
 
     # 8.2) Dag longest path algorithm as best combination
-    try:
-        best_comb_SR: List[str] = find_best_combination(SR_digraph=SR_digraph)
-    except NoGraphSolution:
-        print("Networkx algorithm does no find a solution\n"
-              "(unfeasible). It is likely that the graph is incorrect.\n"
-              "Exit.")
-        return 9
+    # try:
+    #     best_comb_SR: List[str] = find_best_combination(SR_digraph=SR_digraph)
+    # except NoGraphSolution:
+    #     print("Networkx algorithm does no find a solution\n"
+    #           "(unfeasible). It is likely that the graph is incorrect.\n"
+    #           "Exit.")
+    #     return 9
 
     # 8.3) Print best signal combination
     # result(best_comb_SR=best_comb_SR)
