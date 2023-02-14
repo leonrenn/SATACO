@@ -8,7 +8,8 @@ from networkx.classes import DiGraph
 from exceptions.exceptions import NotEnoughStatistcis
 
 
-def df_mapping_dict(SR_names: List[str], inv: bool = False) -> Dict[int, str]:
+def df_mapping_dict(SR_names: List[str],
+                    inv: bool = False) -> Dict[int, str]:
     """Generate mapping dictionary for dataframe
     renaming and getting key rapidly
 

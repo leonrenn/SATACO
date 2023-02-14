@@ -1,5 +1,4 @@
 import os
-import pathlib
 import time
 from argparse import ArgumentParser
 from itertools import combinations_with_replacement
@@ -11,7 +10,7 @@ import pandas as pd
 import uproot as ur
 from networkx.algorithms import dag_longest_path
 from networkx.classes import DiGraph
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
@@ -26,7 +25,8 @@ from utils.functions import (calc_num_combs, calc_pearson_corr,
                              transform_overlap_digraph)
 from utils.plotting import SR_matrix_plotting, corr_matrix_plotting
 from utils.printer import info, result, sataco, summary
-from utils.saving import save_df_corr, save_df_SR_event, save_df_SR_SR
+from utils.saving import (save_df_corr, save_df_SR_event, save_df_SR_SR,
+                          save_sr_names)
 
 # MAIN
 
@@ -43,10 +43,16 @@ def main() -> int:
     # parse for arguments from CLI and provide help
 
     parser: ArgumentParser = ArgumentParser()
-    parser.add_argument("-r", "--root", type=str, required=False,
-                        help=".root files as input from SimpleAnalysis Tool.")
+    parser.add_argument("-r",
+                        "--root",
+                        type=str, required=False,
+                        help=".root files as input from "
+                        "SimpleAnalysis Tool.")
 
-    parser.add_argument("-d", "--droot", type=str, required=False,
+    parser.add_argument("-d",
+                        "--droot",
+                        type=str,
+                        required=False,
                         help="Directory with .root files"
                         "from SimpleAnalysis Tool.")
     parser_dict: Dict[str, str] = vars(parser.parse_args())
@@ -137,7 +143,7 @@ def main() -> int:
 
     print("Files preprocessing:\n")
     # TODO: Think about muliprocessing
-    for file_idx, file_path in enumerate(tqdm(file_paths)):
+    for _, file_path in enumerate(tqdm(file_paths)):
         # opening the file
         with ur.open(file_path) as file:
             # access to the ntuple structure
@@ -162,7 +168,7 @@ def main() -> int:
 
     # concatenate the matrices
     event_SR_matrix_combined: np.array = np.concatenate(
-        event_SR_matrix_list,
+        arrays=event_SR_matrix_list,
         axis=1,
         dtype=np.float32)
     print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
@@ -190,6 +196,10 @@ def main() -> int:
         args=(df_event_SR,))
     process_save_df_SR_event.start()
 
+    # save signal regions in txt file
+    save_sr_names(sr_names=sr_names,
+                  zero_cols=False)
+
     # combinatorics through the different columns
     # generate combinations with replacement
     column_names: List[str] = df_event_SR.columns
@@ -203,6 +213,10 @@ def main() -> int:
             non_zero_column_names.append(name)
         else:
             print(f"\t - Removed Signal Region: {name}")
+    # save non zero column names into txt file
+    # not necessary to multiprocess because this is fast
+    save_sr_names(sr_names=non_zero_column_names,
+                  zero_cols=True)
     print(
         "\nRemoved in total: "
         f"{len(column_names) - len(non_zero_column_names)}")
@@ -212,7 +226,7 @@ def main() -> int:
           f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
 
     SR_SR_matrix: np.array = np.zeros(
-        (len(non_zero_column_names), len(non_zero_column_names)),
+        shape=(len(non_zero_column_names), len(non_zero_column_names)),
         dtype=np.float32)
 
     # create inverse mapping dict for getting access to the
@@ -228,18 +242,20 @@ def main() -> int:
         # events actually are accepted for both signal regions
         # devide by two because take mean of both events
         shared_events: np.array = np.array(
-            df_event_SR[comb[0]] * df_event_SR[comb[-1]], dtype=bool)\
-            * np.array(df_event_SR[comb[0]] + df_event_SR[comb[-1]],
-                       dtype=np.float32) * 0.5
+            object=df_event_SR[comb[0]] * df_event_SR[comb[-1]],
+            dtype=bool) *\
+            np.array(
+                object=df_event_SR[comb[0]] + df_event_SR[comb[-1]],
+                dtype=np.float32) * 0.5
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
-        SR_SR_matrix[i, j] = np.sum(shared_events)
+        SR_SR_matrix[i, j] = np.sum(a=shared_events)
         # fill the full matrix, but the i=j index not twice
         if i != j:
             SR_SR_matrix[j, i] = SR_SR_matrix[i, j]
 
     # save in dataframe and save to parquet
     df_SR_SR: pd.DataFrame = pd.DataFrame(
-        SR_SR_matrix,
+        data=SR_SR_matrix,
         columns=non_zero_column_names)
 
     save_df_SR_SR(df_SR_SR=df_SR_SR)
@@ -273,7 +289,7 @@ def main() -> int:
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
     # save in dataframe and save to csv
     df_corr: pd.DataFrame = pd.DataFrame(
-        pearson_coeff,
+        data=pearson_coeff,
         columns=non_zero_column_names)
 
     process_save_df_corr: Process = Process(
