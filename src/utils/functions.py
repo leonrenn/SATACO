@@ -1,24 +1,26 @@
+import time
 from typing import Dict, List
 
 import numpy as np
+import pandas as pd
 from networkx.classes import DiGraph
 
 from exceptions.exceptions import NotEnoughStatistcis
 
 
-def df_mapping_dict(sr_names: List[str], inv: bool = False) -> Dict[int, str]:
+def df_mapping_dict(SR_names: List[str], inv: bool = False) -> Dict[int, str]:
     """Generate mapping dictionary for dataframe
     renaming and getting key rapidly
 
     Args:
-        sr_names (List[str]):
+        SR_names (List[str]):
         inv (bool): Inverts the dictionary. Defaults to False.
 
     Returns:
         Dict[int, str]: Returns mapping dictionary.
     """
     mapping_dict: Dict[int, str] = {}
-    for sr_idx, sr in enumerate(sr_names):
+    for sr_idx, sr in enumerate(SR_names):
         mapping_dict[sr_idx] = sr
     if inv is True:
         mapping_dict = {v: k for k, v in mapping_dict.items()}
@@ -61,7 +63,7 @@ def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
     Returns:
         np.array: Coefficient matrix.
     """
-    return np.corrcoef(SR_SR_matrix)
+    return np.corrcoef(SR_SR_matrix, dtype=np.float32)
 
 
 def threshold_corr_matrix(correlation_matrix: np.array,

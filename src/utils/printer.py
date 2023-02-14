@@ -1,4 +1,6 @@
 import pathlib
+from datetime import timedelta
+from time import time
 from typing import List
 
 
@@ -49,9 +51,12 @@ def result(best_SR_comb: List[str]) -> None:
     return
 
 
-def summary() -> None:
+def summary(STARTTIME: float) -> None:
     """Prints summary on the command line stored
-    in the summary.txt file.
+    in the summary.txt file and program duration.
+
+    Args:
+        STARTTIME (float): Unix time the program started.
     """
     summary_file_path = str(pathlib.Path(
         __file__).parent.resolve()) + "/summary.txt"
@@ -59,4 +64,6 @@ def summary() -> None:
     summary_content = summary_file.read()
     summary_file.close()
     print(summary_content)
+    print("Process finished after: "
+          f"{timedelta(seconds=time()-STARTTIME)}.")
     return

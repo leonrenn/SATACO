@@ -2,8 +2,9 @@
 ---------------------------------------
 Files generated during analysis and
 saved under results/:
-- event_SR.csv
-- SR_SR.csv
+- event_SR.parquet (gzip compressed)
+- SR_SR.parquet (gzip compressed)
+- correlations.parquet (gzip compressed)
 - SR_SR.png 
 - correlations_threshold.png
 ---------------------------------------

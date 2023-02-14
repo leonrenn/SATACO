@@ -1,7 +1,9 @@
 import os
 import pathlib
+import time
 from argparse import ArgumentParser
 from itertools import combinations_with_replacement
+from multiprocessing import Process, cpu_count
 from typing import Dict, List
 
 import numpy as np
@@ -9,7 +11,7 @@ import pandas as pd
 import uproot as ur
 from networkx.algorithms import dag_longest_path
 from networkx.classes import DiGraph
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
@@ -24,12 +26,16 @@ from utils.functions import (calc_num_combs, calc_pearson_corr,
                              transform_overlap_digraph)
 from utils.plotting import SR_matrix_plotting, corr_matrix_plotting
 from utils.printer import info, result, sataco, summary
+from utils.saving import save_df_corr, save_df_SR_event, save_df_SR_SR
 
 # MAIN
 
 
 def main() -> int:
     # 0) START
+    STARTTIME = time.time()
+    num_cpu: int = cpu_count()
+
     sataco()
     info()
 
@@ -99,10 +105,6 @@ def main() -> int:
                 return 4
             classnames = temp.classnames()
             temp.close()
-            # TODO: Change this line and maybe also when accessing
-            # the arrays because the analyses do not have all this
-            # kind of structure.
-            # find("'ntuple;1': 'TTree'") == -1:
             if str(classnames).find("ntuple") == -1:
                 raise NonSimpleAnalysisFormat
     except SAFileNotFoundError:
@@ -134,6 +136,7 @@ def main() -> int:
     sr_names: List[str] = []
 
     print("Files preprocessing:\n")
+    # TODO: Think about muliprocessing
     for file_idx, file_path in enumerate(tqdm(file_paths)):
         # opening the file
         with ur.open(file_path) as file:
@@ -145,24 +148,32 @@ def main() -> int:
             # that passed
             ttree_arrays = ttree.arrays()
             # empty matrix to store data in numpy style
-            events = np.empty((len(ttree_arrays), len(signal_regions)))
+            events: np.array = np.empty(
+                shape=(len(ttree_arrays), len(signal_regions)),
+                dtype=np.float32)
             # iterating through signal regions to extract the
             # arrays and store row wise
             for sr_idx, sr in enumerate(signal_regions):
                 sr_names.append(sr)
-                events[:, sr_idx] = ttree_arrays[sr]
+                events[:, sr_idx] = np.array(
+                    ttree_arrays[sr], dtype=np.float32)
             # list of matrices
             event_SR_matrix_list.append(events)
 
     # concatenate the matrices
     event_SR_matrix_combined: np.array = np.concatenate(
-        event_SR_matrix_list, axis=1)
+        event_SR_matrix_list,
+        axis=1,
+        dtype=np.float32)
     print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
-          f"Number of SRs: {event_SR_matrix_combined.shape[1]}.")
+          "Number of SRs: "
+          f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
 
     # convert into dataframe
+    # TODO: This takes a lot of time ... -> Improve
     df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
-        data=event_SR_matrix_combined)
+        data=event_SR_matrix_combined,
+        dtype=np.float32)
     df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
         columns=df_mapping_dict(sr_names))
 
@@ -172,17 +183,18 @@ def main() -> int:
     for _ in analysis_names:
         df_event_SR = df_event_SR_matrix_combined.drop(
             columns=["Event", "eventWeight"])
-    # write to csv as a part of the results
-    df_event_SR.to_csv(
-        str(pathlib.Path(__file__).parent.resolve()) +
-        "/../results/event_SR.csv",
-        index=False, header=True, compression="gzip")
+
+    # write to parquet as a part of the results
+    process_save_df_SR_event = Process(
+        target=save_df_SR_event,
+        args=(df_event_SR,))
+    process_save_df_SR_event.start()
 
     # combinatorics through the different columns
     # generate combinations with replacement
     column_names: List[str] = df_event_SR.columns
-    # more efficient combining -> leave out all SR where no events are accepted
-    # at all
+    # more efficient combining -> leave out all SR where
+    # no events are accepted at all
     print("\nZero columns are removed:\n")
     non_zero_column_names: List[str] = []
 
@@ -192,44 +204,55 @@ def main() -> int:
         else:
             print(f"\t - Removed Signal Region: {name}")
     print(
-        f"Removed in total: {len(column_names) - len(non_zero_column_names)}")
+        "\nRemoved in total: "
+        f"{len(column_names) - len(non_zero_column_names)}")
 
     combs = combinations_with_replacement(non_zero_column_names, r=2)
     print("\nTo do are a total of "
           f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
 
     SR_SR_matrix: np.array = np.zeros(
-        (len(non_zero_column_names), len(non_zero_column_names)))
+        (len(non_zero_column_names), len(non_zero_column_names)),
+        dtype=np.float32)
+
     # create inverse mapping dict for getting access to the
     # index via the signal region name
     inv_mapping: Dict[str, int] = df_mapping_dict(
-        non_zero_column_names, inv=True)
+        SR_names=non_zero_column_names,
+        inv=True)
 
     # iterate through the combs
-    for comb in tqdm(combs, leave=True):
+    combs = [comb for comb in combs]
+    for comb in tqdm(combs):
         # shared event calculates a vector that tells which
         # events actually are accepted for both signal regions
         # devide by two because take mean of both events
         shared_events: np.array = np.array(
-            df_event_SR[comb[0]]*df_event_SR[comb[-1]], dtype=bool) * np.array(
-            df_event_SR[comb[0]] + df_event_SR[comb[-1]], dtype=float)/2
+            df_event_SR[comb[0]] * df_event_SR[comb[-1]], dtype=bool)\
+            * np.array(df_event_SR[comb[0]] + df_event_SR[comb[-1]],
+                       dtype=np.float32) * 0.5
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
         SR_SR_matrix[i, j] = np.sum(shared_events)
+        # fill the full matrix, but the i=j index not twice
         if i != j:
-            SR_SR_matrix[j, i] = np.sum(shared_events)
+            SR_SR_matrix[j, i] = SR_SR_matrix[i, j]
 
-    # save in dataframe and save to csv
+    # save in dataframe and save to parquet
     df_SR_SR: pd.DataFrame = pd.DataFrame(
-        SR_SR_matrix, columns=non_zero_column_names)
-    df_SR_SR.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
-                    "/../results/SR_SR.csv",
-                    index=False,
-                    header=True,
-                    compression="gzip")
+        SR_SR_matrix,
+        columns=non_zero_column_names)
+
+    save_df_SR_SR(df_SR_SR=df_SR_SR)
+    process_save_df_SR_SR: Process = Process(
+        target=save_df_SR_SR,
+        args=(df_SR_SR,))
+    process_save_df_SR_SR.start()
 
     # 4) VISUALIZATION
-    SR_matrix_plotting(SR_SR_matrix=SR_SR_matrix,
-                       column_names=non_zero_column_names)
+    process_SR_matrix_plotting: Process = Process(
+        target=SR_matrix_plotting,
+        args=(SR_SR_matrix, non_zero_column_names))
+    process_SR_matrix_plotting.start()
 
     # 5) SUFFICIENT NUMBER OF EVENTS CHECK
     # -> ACCEPTANCE MATRIX
@@ -250,21 +273,24 @@ def main() -> int:
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
     # save in dataframe and save to csv
     df_corr: pd.DataFrame = pd.DataFrame(
-        pearson_coeff, columns=non_zero_column_names)
-    df_corr.to_csv(str(pathlib.Path(__file__).parent.resolve()) +
-                   "/../results/correlations.csv",
-                   index=False,
-                   header=True,
-                   compression="gzip")
+        pearson_coeff,
+        columns=non_zero_column_names)
+
+    process_save_df_corr: Process = Process(
+        target=save_df_corr,
+        args=(df_corr,))
+    process_save_df_corr.start()
 
     # TODO: Specify with event bins and event weights
     # a later apply cut to the pearson coefficients
     # -> OVERLAP MATRIX
     corr_matrix_binary = threshold_corr_matrix(
         correlation_matrix=pearson_coeff)
-    print(corr_matrix_binary)
-    corr_matrix_plotting(correlation_matrix=corr_matrix_binary,
-                         column_names=non_zero_column_names)
+
+    process_corr_matrix_plotting: Process = Process(
+        target=corr_matrix_plotting,
+        args=(corr_matrix_binary, non_zero_column_names))
+    process_corr_matrix_plotting.start()
 
     # 8) GRAPH ALGORITHM
     # Best combination of SRs and longest path through matrix
@@ -285,8 +311,16 @@ def main() -> int:
     # 8.3) Print best signal combination
     # result(best_comb_SR=best_comb_SR)
 
-    # 8) SUMMARY
-    summary()
+    # 8) JOINING MULTIPROCESSES
+    process_save_df_SR_event.join()
+    process_save_df_SR_SR.join()
+    process_save_df_corr.join()
+    process_SR_matrix_plotting.join()
+    process_corr_matrix_plotting.join()
+    print("\nAll 5 processes joined.\n")
+
+    # 9) SUMMARY
+    summary(STARTTIME=STARTTIME)
     return 0
 
 
