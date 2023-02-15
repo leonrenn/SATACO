@@ -1,9 +1,8 @@
-import time
+"""Functions for the main program.
+"""
 from typing import Dict, List
 
 import numpy as np
-import pandas as pd
-from networkx.classes import DiGraph
 
 from exceptions.exceptions import NotEnoughStatistcis
 
@@ -68,7 +67,7 @@ def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
 
 
 def threshold_corr_matrix(correlation_matrix: np.array,
-                          threshold: float = 0.2) -> np.array:
+                          threshold: float = 0.01) -> np.array:
     """Compute correlation matrix below certain threshold.
 
     Args:
@@ -80,11 +79,3 @@ def threshold_corr_matrix(correlation_matrix: np.array,
         np.array: Allowed correlation in binary format.
     """
     return correlation_matrix > threshold
-
-
-def transform_overlap_digraph(SR_SR_matrix: np.array) -> DiGraph:
-    pass
-
-
-def find_best_combination(SR_digraph: DiGraph) -> List[str]:
-    pass

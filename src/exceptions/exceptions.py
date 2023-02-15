@@ -1,4 +1,5 @@
-from networkx.exception import NetworkXUnfeasible
+"""Exceptions for the main program.
+"""
 
 
 class NonSimpleAnalysisFormat(Exception):
@@ -53,9 +54,3 @@ class NotEnoughStatistcis(Exception):
     aquired enough statistics. (Maybe delete exception
     because analysis must continue in either way)"""
     pass
-
-
-class NoGraphSolution(NetworkXUnfeasible):
-    """Raised when the algorithm for longest path in DAG
-    does not find a solution or graph is incorrect.
-    """

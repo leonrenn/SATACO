@@ -1,3 +1,7 @@
+"""Plotting functions for the main program provide a very
+handy way to plot different matrices.
+"""
+
 import pathlib
 from typing import List
 
@@ -103,3 +107,7 @@ def corr_matrix_plotting(correlation_matrix: np.array,
     if show is True:
         plt.show()
     return
+
+
+def path_through_matrix_plotting():
+    pass

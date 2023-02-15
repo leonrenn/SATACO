@@ -1,3 +1,7 @@
+"""Printing functions print informations stored in 
+different files to the console.
+"""
+
 import pathlib
 from datetime import timedelta
 from time import time

@@ -1,3 +1,6 @@
+"""Main Program called from the command line.
+"""
+
 import os
 import time
 from argparse import ArgumentParser
@@ -8,12 +11,10 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 import uproot as ur
-from networkx.algorithms import dag_longest_path
-from networkx.classes import DiGraph
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
-from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
+from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
                                    NotEnoughStatistcis,
                                    SADirectoryNotFoundError,
@@ -21,8 +22,8 @@ from exceptions.exceptions import (NoGraphSolution, NonSimpleAnalysisFormat,
                                    SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_pearson_corr,
                              check_sufficient_statistics, df_mapping_dict,
-                             find_best_combination, threshold_corr_matrix,
-                             transform_overlap_digraph)
+                             threshold_corr_matrix)
+from utils.path_finder import PathFinder
 from utils.plotting import SR_matrix_plotting, corr_matrix_plotting
 from utils.printer import info, result, sataco, summary
 from utils.saving import (save_df_corr, save_df_SR_event, save_df_SR_SR,
@@ -168,7 +169,7 @@ def main() -> int:
 
     # concatenate the matrices
     event_SR_matrix_combined: np.array = np.concatenate(
-        arrays=event_SR_matrix_list,
+        event_SR_matrix_list,
         axis=1,
         dtype=np.float32)
     print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
@@ -309,25 +310,16 @@ def main() -> int:
     process_corr_matrix_plotting.start()
 
     # 8) GRAPH ALGORITHM
-    # Best combination of SRs and longest path through matrix
-    # 8.1) Put the lower triangle of the matrix into graph form
-    # the graph is a directed acyclic graph (dag)
-    SR_digraph: DiGraph = transform_overlap_digraph(
-        SR_SR_matrix=SR_SR_matrix)
+    # IMPORTANT: These algorithms are taken from the TACO SW.
 
-    # 8.2) Dag longest path algorithm as best combination
-    # try:
-    #     best_comb_SR: List[str] = find_best_combination(SR_digraph=SR_digraph)
-    # except NoGraphSolution:
-    #     print("Networkx algorithm does no find a solution\n"
-    #           "(unfeasible). It is likely that the graph is incorrect.\n"
-    #           "Exit.")
-    #     return 9
+    # initialize the path finder
+    path_finder: PathFinder = PathFinder(corelations=pearson_coeff)
+    # start the algorithm to find the best path
+    signal_regions: Dict = path_finder.find_path(top=3)
 
-    # 8.3) Print best signal combination
-    # result(best_comb_SR=best_comb_SR)
+    print(f"\nBest paths are {signal_regions}.\n")
 
-    # 8) JOINING MULTIPROCESSES
+    # 9) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
     process_save_df_SR_SR.join()
     process_save_df_corr.join()
@@ -335,7 +327,7 @@ def main() -> int:
     process_corr_matrix_plotting.join()
     print("\nAll 5 processes joined.\n")
 
-    # 9) SUMMARY
+    # 10) SUMMARY
     summary(STARTTIME=STARTTIME)
     return 0
 
