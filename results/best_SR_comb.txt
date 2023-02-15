@@ -1,0 +1,3 @@
+0: SR0B, SR0D, SR1, SR2, 
+1: SR0B, SR0C, SR1, SR2, 
+2: 4L, SR1, SR2, 

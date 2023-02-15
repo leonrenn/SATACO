@@ -10,10 +10,10 @@ from exceptions.exceptions import NotEnoughStatistcis
 def df_mapping_dict(SR_names: List[str],
                     inv: bool = False) -> Dict[int, str]:
     """Generate mapping dictionary for dataframe
-    renaming and getting key rapidly
+    renaming and getting key rapidly.
 
     Args:
-        SR_names (List[str]):
+        SR_names (List[str]): List of Signal Regions.
         inv (bool): Inverts the dictionary. Defaults to False.
 
     Returns:
@@ -27,18 +27,18 @@ def df_mapping_dict(SR_names: List[str],
     return mapping_dict
 
 
-def calc_num_combs(len_sr_names: int) -> int:
+def calc_num_combs(len_SR_names: int) -> int:
     """Formula to calculate the number of
     combinations with replacement for two
     signal regions.
 
     Args:
-        len_sr_names (int): Length of list of signal regions.
+        len_SR_names (int): Length of list of signal regions.
 
     Returns:
         int: Number of combinations.
     """
-    return int((len_sr_names + 1) * len_sr_names/2)
+    return int((len_SR_names + 1) * len_SR_names/2)
 
 
 def check_sufficient_statistics(SR_SR_matrix: np.array,
@@ -79,3 +79,26 @@ def threshold_corr_matrix(correlation_matrix: np.array,
         np.array: Allowed correlation in binary format.
     """
     return correlation_matrix > threshold
+
+
+def indices_to_SR_names(SR_names: List[str],
+                        path_dictionary: Dict) -> Dict:
+    """Maps the indices of the Signal Regions to their
+    corresponding names.
+
+    Args:
+        SR_names (List[str]): List of Signal Regions.
+        path_dictionary (Dict): Dictionary
+        as output of TACO.
+
+    Returns:
+        Dict[Dict[str, List[str]]]: Dictionary with SR names instead
+        of indices.
+    """
+    path_list: List = []
+    for path_idx, path in path_dictionary.items():
+        path_list = path["path"]
+        for idx, SR_idx in enumerate(path_list):
+            path_list[idx] = SR_names[SR_idx]
+        path_dictionary[path_idx]["path"] = path_list
+    return path_dictionary

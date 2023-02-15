@@ -22,9 +22,10 @@ from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_pearson_corr,
                              check_sufficient_statistics, df_mapping_dict,
-                             threshold_corr_matrix)
+                             indices_to_SR_names, threshold_corr_matrix)
 from utils.path_finder import PathFinder
-from utils.plotting import SR_matrix_plotting, corr_matrix_plotting
+from utils.plotting import (SR_matrix_plotting, corr_matrix_plotting,
+                            correlation_free_entries_marking)
 from utils.printer import info, result, sataco, summary
 from utils.saving import (save_df_corr, save_df_SR_event, save_df_SR_SR,
                           save_sr_names)
@@ -315,9 +316,24 @@ def main() -> int:
     # initialize the path finder
     path_finder: PathFinder = PathFinder(corelations=pearson_coeff)
     # start the algorithm to find the best path
-    signal_regions: Dict = path_finder.find_path(top=3)
+    proposed_paths: Dict = path_finder.find_path(top=3)
 
-    print(f"\nBest paths are {signal_regions}.\n")
+    # plot the top=1 path into binary matrix
+    process_matrix_path_plotting: Process = Process(
+        target=correlation_free_entries_marking,
+        args=(corr_matrix_binary,
+              proposed_paths,
+              non_zero_column_names))
+    process_matrix_path_plotting.start()
+
+    # change indices to SR names
+    proposed_paths_SR_Names: Dict = indices_to_SR_names(
+        SR_names=non_zero_column_names,
+        path_dictionary=proposed_paths)
+    # save the proposed paths to a txt file
+    # and print nicely on the command line
+
+    result(best_SR_comb=proposed_paths_SR_Names)
 
     # 9) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
@@ -325,7 +341,8 @@ def main() -> int:
     process_save_df_corr.join()
     process_SR_matrix_plotting.join()
     process_corr_matrix_plotting.join()
-    print("\nAll 5 processes joined.\n")
+    process_matrix_path_plotting.join()
+    print("\nAll 5 processes joined.")
 
     # 10) SUMMARY
     summary(STARTTIME=STARTTIME)

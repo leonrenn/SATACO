@@ -7,4 +7,7 @@ saved under results/:
 - correlations.parquet (gzip compressed)
 - SR_SR.png 
 - correlations_threshold.png
+- correlations_path.png
+- signal_regions.txt
+- best_SR_comb.txt
 ---------------------------------------
