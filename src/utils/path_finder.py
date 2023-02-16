@@ -12,6 +12,7 @@ from typing import Callable
 
 import numpy as np
 from more_itertools import chunked
+from tqdm import trange
 
 from .graph import Graph
 
@@ -307,7 +308,9 @@ class PathFinder():
         if runs is None:
             runs = max_c - 1
         pth = None
-        for i in range(0, runs):
+
+        print("\nGraph finding procedure:\n")
+        for i in trange(0, runs):
             pth = self.top_weighted_cpath(path_weight=pth, top=top)
             if i < max_c-1:
                 self.reset_source(i+1)

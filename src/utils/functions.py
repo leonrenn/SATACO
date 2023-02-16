@@ -3,6 +3,8 @@
 from typing import Dict, List
 
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 from exceptions.exceptions import NotEnoughStatistcis
 
@@ -79,6 +81,33 @@ def threshold_corr_matrix(correlation_matrix: np.array,
         np.array: Allowed correlation in binary format.
     """
     return correlation_matrix > threshold
+
+
+def calc_SR_sensitivity(df_SR_events: pd.DataFrame,
+                        method: str = "simple",
+                        calculate: bool = True) -> List[float]:
+    if calculate is False:
+        print("Not calculated...")
+        return None
+    else:
+        sensitivity: List[float] = []
+        if method == "simple":
+            # simple method: $\frac{S}{\sqrt{B}}$
+            total_event_num: int = len(df_SR_events.index)
+
+            for columns in tqdm(df_SR_events.columns):
+                signal_events: int = np.count_nonzero(
+                    a=df_SR_events[columns].to_numpy(dtype=np.float32))
+                sensitivity.append(
+                    signal_events/np.sqrt(total_event_num - signal_events))
+
+        elif method == "middle":
+            # middle
+
+            pass
+        elif method == "likelihood":
+            pass
+        return sensitivity
 
 
 def indices_to_SR_names(SR_names: List[str],

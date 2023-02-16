@@ -21,8 +21,9 @@ from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_pearson_corr,
-                             check_sufficient_statistics, df_mapping_dict,
-                             indices_to_SR_names, threshold_corr_matrix)
+                             calc_SR_sensitivity, check_sufficient_statistics,
+                             df_mapping_dict, indices_to_SR_names,
+                             threshold_corr_matrix)
 from utils.path_finder import PathFinder
 from utils.plotting import (SR_matrix_plotting, corr_matrix_plotting,
                             correlation_free_entries_marking)
@@ -284,10 +285,7 @@ def main() -> int:
               "Exit.")
         return 8
 
-    # 6) BOOTSTRAPPING PROCEDURE ??
-    # TODO: Implement bootstrapping procedure
-
-    # 7) CALCULATION OF PEARSON COEFFICIENT AND CUTTING
+    # 6) CALCULATION OF PEARSON COEFFICIENT AND CUTTING
     pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
     # save in dataframe and save to csv
     df_corr: pd.DataFrame = pd.DataFrame(
@@ -299,8 +297,6 @@ def main() -> int:
         args=(df_corr,))
     process_save_df_corr.start()
 
-    # TODO: Specify with event bins and event weights
-    # a later apply cut to the pearson coefficients
     # -> OVERLAP MATRIX
     corr_matrix_binary = threshold_corr_matrix(
         correlation_matrix=pearson_coeff)
@@ -310,11 +306,20 @@ def main() -> int:
         args=(corr_matrix_binary, non_zero_column_names))
     process_corr_matrix_plotting.start()
 
-    # 8) GRAPH ALGORITHM
+    # 7) GRAPH ALGORITHM
     # IMPORTANT: These algorithms are taken from the TACO SW.
 
+    # generate the weights
+    print("\nGenerating weights for hererditary search:\n")
+    weights_SR: List[float] = calc_SR_sensitivity(df_SR_events=df_event_SR,
+                                                  method="simple",
+                                                  calculate=True)
+
     # initialize the path finder
-    path_finder: PathFinder = PathFinder(corelations=pearson_coeff)
+    path_finder: PathFinder = PathFinder(corelations=pearson_coeff,
+                                         threshold=0.01,
+                                         source=0,
+                                         weights=weights_SR)
     # start the algorithm to find the best path
     proposed_paths: Dict = path_finder.find_path(top=3)
 
@@ -335,16 +340,16 @@ def main() -> int:
 
     result(best_SR_comb=proposed_paths_SR_Names)
 
-    # 9) JOINING MULTIPROCESSES
+    # 8) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
     process_save_df_SR_SR.join()
     process_save_df_corr.join()
     process_SR_matrix_plotting.join()
     process_corr_matrix_plotting.join()
     process_matrix_path_plotting.join()
-    print("\nAll 5 processes joined.")
+    print("\nAll 6 processes joined.")
 
-    # 10) SUMMARY
+    # 9) SUMMARY
     summary(STARTTIME=STARTTIME)
     return 0
 
