@@ -30,15 +30,18 @@ class Graph(object):
         if isinstance(srce, (int, float)):
             srce = [int(srce)]
         if srce is None:
-            return [(k, i) for k, subdict in self._adj.items() for i in subdict]
+            return [(k, i) for k, subdict in self._adj.items()
+                    for i in subdict]
         else:
-            return [(k, i) for k, subdict in self._adj.items() for i in subdict if k in srce]
+            return [(k, i) for k, subdict in self._adj.items()
+                    for i in subdict if k in srce]
 
     def edges(self, srce: int = None) -> list:
         if isinstance(srce, list):
             srce = srce[0]
         if srce is None:
-            return [(k, i) for k, subdict in self._adj.items() for i in subdict]
+            return [(k, i) for k, subdict in self._adj.items()
+                    for i in subdict]
         if srce in self._adj:
             return [(srce, i) for i in self._adj[srce]]
         else:

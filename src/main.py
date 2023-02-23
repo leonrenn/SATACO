@@ -145,7 +145,7 @@ def main() -> int:
     sr_names: List[str] = []
 
     print("Files preprocessing:\n")
-    # TODO: Think about muliprocessing
+    # TODO: Think about how muliprocessing would work on this
     for _, file_path in enumerate(tqdm(file_paths)):
         # opening the file
         with ur.open(file_path) as file:
@@ -179,7 +179,6 @@ def main() -> int:
           f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
 
     # convert into dataframe
-    # TODO: This takes a lot of time ... -> Improve
     df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
         data=event_SR_matrix_combined,
         dtype=np.float32)

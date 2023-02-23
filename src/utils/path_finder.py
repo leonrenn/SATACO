@@ -1,14 +1,17 @@
 """
-############################################################################################
-# Script written to find optimum signal regions, as a continuation of the LH2019 project   #
-# 'Determination of Independent Signal Regions in LHC Searches for New Physics'            #
-# by A. Buckley, B. Fuks, H. Reyes-González, W. Waltenberger, S. Williamson and J. Yellen  #
-############################################################################################
+#################################################
+# Script written to find optimum signal regions,#
+as a continuation of the LH2019 project         #
+# 'Determination of Independent Signal Regions  #
+in LHC Searches for New Physics'                #
+# by A. Buckley, B. Fuks, H. Reyes-González,    #
+W. Waltenberger, S. Williamson and J. Yellen    #
+#################################################
 Taken from TACO:
 https://gitlab.com/t-a-c-o/taco_code/-/blob/master/codes/Full_SR_Ranking/pathfinder/graph.py
 """
 from itertools import combinations
-from typing import Callable
+from typing import Callable, Dict, List
 
 import numpy as np
 from more_itertools import chunked
@@ -21,7 +24,7 @@ class PathFinder():
     def __init__(self, corelations: np.ndarray,
                  threshold: float = 0.01,
                  source: int = 0,
-                 weights: list = None) -> None:
+                 weights: List = None) -> None:
         """
         Calculate available paths using the
         Hereditary Depth First (HDFS) algorithm:
@@ -45,10 +48,12 @@ class PathFinder():
         self.set_weight_func(self.get_weight)
         self.set_weight_limit_func(self.get_weight)
 
-    def set_weight_func(self, weight_funk: Callable) -> None:
+    def set_weight_func(self,
+                        weight_funk: Callable) -> None:
         self.weight_func = weight_funk
 
-    def set_weight_limit_func(self, max_weighting: Callable) -> None:
+    def set_weight_limit_func(self,
+                              max_weighting: Callable) -> None:
         self.weight_lim_func = max_weighting
 
     def set_allowed_paths(self) -> None:
@@ -72,14 +77,16 @@ class PathFinder():
         """
         return np.triu(self.allowed_paths, 1)
 
-    def get_weight(self, path: list) -> float:
+    def get_weight(self,
+                   path: List) -> float:
         """ Get the sum of the weights for a given path of indices"""
         if len(path) > 0:
             return np.sum(self.weights[path])
         else:
             return 0.0
 
-    def reset_source(self, source: int = 0) -> None:
+    def reset_source(self,
+                     source: int = 0) -> None:
         """
         reset the source node
         """
@@ -94,7 +101,8 @@ class PathFinder():
             print('weights not set: Defaulting to a uniform weighting of 1')
             self.set_weighted_graph(weights=None)
 
-    def set_weighted_graph(self, weights: list) -> None:
+    def set_weighted_graph(self,
+                           weights: List) -> None:
         """
         add weights to the node edges
         """
@@ -110,12 +118,14 @@ class PathFinder():
         self.graph.add_weighted_edges(edges)
         self.weights = np.array(weights)
 
-    def path_bool(self, source_mask: bool = True) -> np.ndarray:
+    def path_bool(self,
+                  source_mask: bool = True) -> np.ndarray:
         """
-        Set up the binary independency matrix setting the 
-        source diagonal element to True. 
+        Set up the binary independency matrix setting the
+        source diagonal element to True.
 
-        source_mask: mask matrix by source column (increase selection efficiency)
+        source_mask (bool): mask matrix by source column
+        (increase selection efficiency)
         """
         msk = np.ones(self.dim+1, dtype='bool')
         msk[:-1:, :-1:] = self.corr_mask
@@ -127,7 +137,8 @@ class PathFinder():
         msk[sub, :] = False
         return msk
 
-    def find_edges(self, weights: list = None) -> list:
+    def find_edges(self,
+                   weights: List = None) -> List:
         """
         finds edges of the graph
         weights: (optional) default to 1 if None
@@ -153,18 +164,19 @@ class PathFinder():
     #         return set([])
 
     @staticmethod
-    def strip_subdict(dct: dict, target: str) -> list:
+    def strip_subdict(dct: Dict,
+                      target: str) -> List:
         return [p[target] for _, p in dct.items()]
 
     @staticmethod
-    def check_subset(prev_path: list, path: list) -> bool:
+    def check_subset(prev_path: List, path: List) -> bool:
         pth = set(path)
         prev = [set(item) for item in prev_path]
         return any([pth.issubset(item) for item in prev])
 
-    def all_conditional_paths(self, trim: bool = True) -> list:
+    def all_conditional_paths(self, trim: bool = True) -> List:
         """
-        Hereditary Depth First Search 
+        Hereditary Depth First Search
         Returns all paths under the Hereditary condition.
 
         target: finishing node
@@ -210,13 +222,15 @@ class PathFinder():
                 good_nodes.pop()
                 visited.popitem()
 
-    def top_weighted_cpath(self, path_weight: dict = None, top: int = 1) -> dict:
+    def top_weighted_cpath(self,
+                           path_weight: dict = None,
+                           top: int = 1) -> Dict:
         """
-        Weighted Hereditary Depth First Search 
-        Returns best path for a given source under 
+        Weighted Hereditary Depth First Search
+        Returns best path for a given source under
         the weighted Hereditary condition.
 
-        max_wgt: maximum weight for running comparison 
+        max_wgt: maximum weight for running comparison
         trim: (bool) trim the target node from result
 
         """
@@ -258,7 +272,8 @@ class PathFinder():
                 # take the intersection of nodes available to the child
                 # with those available to all previous nodes in path
                 # gn = self.good_nodes(child).intersection(*good_nodes)
-                # gn = set(v for _, v in self.graph.edges(child)).intersection(*good_nodes)
+                # gn = set(v for _, v in self.graph.edges(child))
+                # .intersection(*good_nodes)
                 gn = set(v for _, v in self.graph.edges(
                     child)).intersection(good_nodes[-1])
                 # list the available nodes from the set gn
@@ -302,7 +317,9 @@ class PathFinder():
                 visited.popitem()
         return path_weight
 
-    def find_path(self, runs: int = None, top: int = 1) -> dict:
+    def find_path(self,
+                  runs: int = None,
+                  top: int = 1) -> Dict:
 
         max_c = self.dim[0]
         if runs is None:
@@ -319,7 +336,7 @@ class PathFinder():
                 break
         return pth
 
-    def find_all_paths(self, runs: int = None, top: int = None) -> dict:
+    def find_all_paths(self, runs: int = None, top: int = None) -> Dict:
 
         max_c = self.dim[0]
         if runs is None:
@@ -342,7 +359,9 @@ class PathFinder():
                 break
         return self.rank_path_by_weight(pths, top=top)
 
-    def is_allowed(self, path, skip: int = 0) -> bool:
+    def is_allowed(self,
+                   path,
+                   skip: int = 0) -> bool:
         """
         Check if given path is allowed
         """
@@ -351,7 +370,10 @@ class PathFinder():
                 return False
         return True
 
-    def rank_path_by_weight(self, paths: list, weights: list = None, top=None) -> dict:
+    def rank_path_by_weight(self,
+                            paths: List,
+                            weights: List = None,
+                            top=None) -> Dict:
         """
         Sort a list of paths by the weights
         returns dictionary of paths + weights ranked from 0 (best)
@@ -371,7 +393,8 @@ class PathFinder():
                 ret[i] = {'path': paths[item], 'weight': weights[item]}
         return ret
 
-    def get_path_weights(self, paths: list) -> list:
+    def get_path_weights(self,
+                         paths: List) -> List:
         """
         Get the weight of a given path
         path: single path list
