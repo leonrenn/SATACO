@@ -1,7 +1,8 @@
-"""Printing functions print informations stored in 
+"""Printing functions print informations stored in
 different files to the console.
 """
 
+import json
 import pathlib
 from datetime import timedelta
 from time import time
@@ -33,34 +34,49 @@ def info() -> None:
     return
 
 
-def result(best_SR_comb: Dict) -> None:
-    """Prints best combination ton the command line
+def result(best_SR_comb: Dict,
+           dict_SR_weights: Dict = None,
+           top: int = -1) -> None:
+    """Prints best combination on the command line
     and writes results into dedicated file.
 
     Args:
-        best_SR_comb (Dict[List[str]]): Best SR combinations from
+        best_SR_comb (Dict): Best SR combinations from
         HDFS graph algrotihm.
     """
     result_file_path: str = str(pathlib.Path(
         __file__).parent.resolve()) + "/../../results/best_SR_comb.txt"
     print("\n---------------------------------------")
     print("\nThe best combination of SRs is:\n")
+    counter: int = 0
     with open(result_file_path, "w") as result_file:
-        for path_idx, paths in best_SR_comb.items():
-            print(f"Path Idx {path_idx} (weight: {paths['weight']}): ", end="")
-            result_file.write(str(path_idx) + ": ")
-            for SR in paths["path"]:
-                result_file.write(SR + ", ")
-            print(*paths["path"], sep=", ", end=".\n")
-            result_file.write("\n")
+        for paths, summed_weight in best_SR_comb.items():
+            print(
+                f"Path weight = {summed_weight}: ",
+                end="")
+            result_file.write(
+                str(counter) + " (" +
+                str(summed_weight) + "): ")
+            # TODO: very ugly reconverting
+            SR_from_string = [k.strip(" '").strip("'")
+                              for k in paths.strip("[]").split(",")]
+            for SR in SR_from_string:
+                result_file.write(
+                    SR + " (weight: " +
+                    str(dict_SR_weights.get(SR)) + "), ")
 
+            print(*paths, sep=", ", end=".\n")
+            result_file.write("\n")
+            counter += 1
+            if counter == top:
+                break
     print(f"\nSaved under:\n{result_file_path}.\n ")
     print("---------------------------------------")
     return
 
 
 def summary(STARTTIME: float) -> None:
-    """Prints summary on the command line stored
+    """Prints summary on the command line stores
     in the summary.txt file and program duration.
 
     Args:

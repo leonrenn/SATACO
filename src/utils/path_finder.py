@@ -254,6 +254,7 @@ class PathFinder():
         while stack:
             # define childern as the generator from the last element of stack
             children = stack[-1]
+
             # The child node is the next element from children
             child = next(children, None)
 
@@ -325,8 +326,6 @@ class PathFinder():
         if runs is None:
             runs = max_c - 1
         pth = None
-
-        print("\nGraph finding procedure:\n")
         for i in trange(0, runs):
             pth = self.top_weighted_cpath(path_weight=pth, top=top)
             if i < max_c-1:
@@ -337,12 +336,12 @@ class PathFinder():
         return pth
 
     def find_all_paths(self, runs: int = None, top: int = None) -> Dict:
-
+        print("\nGraph finding procedure:\n")
         max_c = self.dim[0]
         if runs is None:
             runs = max_c - 1
         pths = []
-        for i in range(0, runs):
+        for i in trange(0, runs):
             all_p = self.all_conditional_paths(trim=True)
             top_p = []
             for item in chunked(all_p, 500):

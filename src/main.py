@@ -23,6 +23,7 @@ from exceptions.exceptions import (NonSimpleAnalysisFormat,
 from utils.functions import (calc_num_combs, calc_pearson_corr,
                              calc_SR_sensitivity, check_sufficient_statistics,
                              df_mapping_dict, indices_to_SR_names,
+                             sort_df_SR_dep_weights, sort_proposed_paths,
                              threshold_corr_matrix)
 from utils.path_finder import PathFinder
 from utils.plotting import (SR_matrix_plotting, corr_matrix_plotting,
@@ -215,6 +216,10 @@ def main() -> int:
             non_zero_column_names.append(name)
         else:
             print(f"\t - Removed Signal Region: {name}")
+    if len(non_zero_column_names) == 0:
+        print("\nNo columns since no columns accepted a single event.")
+        return 8
+    df_event_SR = df_event_SR[non_zero_column_names]
     # save non zero column names into txt file
     # not necessary to multiprocess because this is fast
     save_sr_names(sr_names=non_zero_column_names,
@@ -223,13 +228,30 @@ def main() -> int:
         "\nRemoved in total: "
         f"{len(column_names) - len(non_zero_column_names)}")
 
-    combs = combinations_with_replacement(non_zero_column_names, r=2)
-    print("\nTo do are a total of "
-          f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
-
     SR_SR_matrix: np.array = np.zeros(
         shape=(len(non_zero_column_names), len(non_zero_column_names)),
         dtype=np.float32)
+
+    # before saving rearange matrix with weights
+    # generate the weights
+    print("\nGenerating weights for hereditary search:\n")
+    weights_SR: List[float] = calc_SR_sensitivity(df_event_SR=df_event_SR,
+                                                  method="simple",
+                                                  calculate=True)
+    # sort dataframe if weights are calculated
+    sorted_dict_SR_weigths: Dict = dict(
+        zip(non_zero_column_names, [1]*len(non_zero_column_names)))
+
+    if weights_SR is not None:
+        df_event_SR, sorted_dict_SR_weigths = sort_df_SR_dep_weights(
+            df_event_SR=df_event_SR,
+            weights=weights_SR)
+        # change to sorted version
+        non_zero_column_names = df_event_SR.columns.to_list()
+
+    combs = combinations_with_replacement(non_zero_column_names, r=2)
+    print("\nTo do are a total of "
+          f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
 
     # create inverse mapping dict for getting access to the
     # index via the signal region name
@@ -307,20 +329,15 @@ def main() -> int:
 
     # 7) GRAPH ALGORITHM
     # IMPORTANT: These algorithms are taken from the TACO SW.
-
-    # generate the weights
-    print("\nGenerating weights for hererditary search:\n")
-    weights_SR: List[float] = calc_SR_sensitivity(df_SR_events=df_event_SR,
-                                                  method="simple",
-                                                  calculate=True)
-
     # initialize the path finder
-    path_finder: PathFinder = PathFinder(corelations=pearson_coeff,
-                                         threshold=0.01,
-                                         source=0,
-                                         weights=weights_SR)
+    path_finder: PathFinder = PathFinder(
+        corelations=pearson_coeff,
+        threshold=0.01,
+        source=0,
+        weights=None)  # incorrect with weights
     # start the algorithm to find the best path
-    proposed_paths: Dict = path_finder.find_path(top=3)
+
+    proposed_paths: Dict = path_finder.find_all_paths()
 
     # plot the top=1 path into binary matrix
     process_matrix_path_plotting: Process = Process(
@@ -334,10 +351,18 @@ def main() -> int:
     proposed_paths_SR_Names: Dict = indices_to_SR_names(
         SR_names=non_zero_column_names,
         path_dictionary=proposed_paths)
+
+    # sorted paths
+    sorted_proposed_path: Dict = sort_proposed_paths(
+        best_SR_comb=proposed_paths_SR_Names,
+        dict_SR_weights=sorted_dict_SR_weigths)
+
     # save the proposed paths to a txt file
     # and print nicely on the command line
-
-    result(best_SR_comb=proposed_paths_SR_Names)
+    print(sort_proposed_paths)
+    result(best_SR_comb=sorted_proposed_path,
+           dict_SR_weights=sorted_dict_SR_weigths,
+           top=5)
 
     # 8) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()

@@ -1,6 +1,6 @@
 """Functions for the main program.
 """
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -83,7 +83,7 @@ def threshold_corr_matrix(correlation_matrix: np.array,
     return correlation_matrix > threshold
 
 
-def calc_SR_sensitivity(df_SR_events: pd.DataFrame,
+def calc_SR_sensitivity(df_event_SR: pd.DataFrame,
                         method: str = "simple",
                         calculate: bool = True) -> List[float]:
     if calculate is False:
@@ -93,11 +93,11 @@ def calc_SR_sensitivity(df_SR_events: pd.DataFrame,
         sensitivity: List[float] = []
         if method == "simple":
             # simple method: $\frac{S}{\sqrt{B}}$
-            total_event_num: int = len(df_SR_events.index)
+            total_event_num: int = len(df_event_SR.index)
 
-            for columns in tqdm(df_SR_events.columns):
+            for columns in tqdm(df_event_SR.columns):
                 signal_events: int = np.count_nonzero(
-                    a=df_SR_events[columns].to_numpy(dtype=np.float32))
+                    a=df_event_SR[columns].to_numpy(dtype=np.float32))
                 sensitivity.append(
                     signal_events/np.sqrt(total_event_num - signal_events))
 
@@ -108,6 +108,31 @@ def calc_SR_sensitivity(df_SR_events: pd.DataFrame,
         elif method == "likelihood":
             pass
         return sensitivity
+
+
+def sort_df_SR_dep_weights(df_event_SR: pd.DataFrame,
+                           weights: List[float]) -> Tuple:
+    """Sort dataframe depending on the weights (sensitivity)
+    of each signal region.
+
+    Args:
+        df_event_SR (pd.DataFrame): Dataframe of event per SR.
+        weights (List[float]): Weights of each SR.
+
+    Returns:
+        Tuple: Sorted dataframe and dictionary
+        with SR and weights.
+    """
+    # generate dictionary with names of Signal Regions
+    # and weights
+    dict_SR_weights: Dict = {}
+    for SR, weight in zip(df_event_SR.columns, weights):
+        dict_SR_weights[SR] = weight
+    # sort ditionary
+    sorted_dict: Dict = dict(sorted(dict_SR_weights.items(),
+                                    key=lambda x: x[1],
+                                    reverse=True))
+    return df_event_SR[sorted_dict.keys()], sorted_dict
 
 
 def indices_to_SR_names(SR_names: List[str],
@@ -131,3 +156,27 @@ def indices_to_SR_names(SR_names: List[str],
             path_list[idx] = SR_names[SR_idx]
         path_dictionary[path_idx]["path"] = path_list
     return path_dictionary
+
+
+def sort_proposed_paths(best_SR_comb: Dict,
+                        dict_SR_weights: Dict) -> Dict:
+    """Sorts proposed path after weights individual
+    that are summed to build the total weight of
+    the path.
+
+    Args:
+        best_SR_comb (Dict): Proposed path by graph
+        algorithm.
+        dict_SR_weights (Dict): Weights in a
+        dictionary.
+
+    Returns:
+        Dict: Highest path weight to lowest.
+    """
+    weighted_SR_combs: Dict = {}
+    for _, path in best_SR_comb.items():
+        weighted_SR_combs[str(path["path"])] = sum(
+            [dict_SR_weights[SR] for SR in path["path"]])
+    return dict(sorted(weighted_SR_combs.items(),
+                       key=lambda x: x[1],
+                       reverse=True))
