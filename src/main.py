@@ -334,7 +334,8 @@ def main() -> int:
         corelations=pearson_coeff,
         threshold=0.01,
         source=0,
-        weights=None)  # incorrect with weights
+        weights=None)
+    # incorrect with weights
     # start the algorithm to find the best path
 
     proposed_paths: Dict = path_finder.find_all_paths()
