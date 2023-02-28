@@ -34,7 +34,7 @@ def info() -> None:
     return
 
 
-def result(best_SR_comb: Dict,
+def result(proposed_paths: Dict,
            dict_SR_weights: Dict = None,
            top: int = -1) -> None:
     """Prints best combination on the command line
@@ -50,22 +50,19 @@ def result(best_SR_comb: Dict,
     print("\nThe best combination of SRs is:\n")
     counter: int = 0
     with open(result_file_path, "w") as result_file:
-        for paths, summed_weight in best_SR_comb.items():
+        for path_idx, path_dict in proposed_paths.items():
             print(
-                f"Path weight = {summed_weight}: ",
+                f"Path weight = {path_dict['weight']}: ",
                 end="")
             result_file.write(
-                str(counter) + " (" +
-                str(summed_weight) + "): ")
-            # TODO: very ugly reconverting
-            SR_from_string = [k.strip(" '").strip("'")
-                              for k in paths.strip("[]").split(",")]
-            for SR in SR_from_string:
+                str(path_idx) + " (" +
+                str(path_dict['weight']) + "): ")
+            for SR in path_dict["path"]:
                 result_file.write(
                     SR + " (weight: " +
                     str(dict_SR_weights.get(SR)) + "), ")
 
-            print(*paths, sep=", ", end=".\n")
+            print(*path_dict["path"], sep=", ", end=".\n")
             result_file.write("\n")
             counter += 1
             if counter == top:

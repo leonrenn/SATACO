@@ -1,29 +1,35 @@
 """
-############################################################################################
-# Script written to find optimum signal regions, as a continuation of the LH2019 project   #
-# 'Determination of Independent Signal Regions in LHC Searches for New Physics'            #
-# by A. Buckley, B. Fuks, H. Reyes-González, W. Waltenberger, S. Williamson and J. Yellen  #
-############################################################################################
+##################################################
+# Script written to find optimum signal regions, #
+# as a continuation of the LH2019 project        #
+# 'Determination of Independent Signal Regions   #
+in LHC Searches for New Physics'                 #
+# by A. Buckley, B. Fuks, H. Reyes-González,     #
+W. Waltenberger, S. Williamson and J. Yellen     #
+##################################################
 """
 
 from itertools import combinations
-from typing import Callable
+from typing import Callable, Dict, List
 
 import numpy as np
-from graph import Graph
 from more_itertools import chunked
+from tqdm import trange
+
+from utils.graph import Graph
 
 
 class PathFinder():
-    def __init__(self, corelations: np.ndarray, threshold: float = 0.01,
+    def __init__(self, corelations: np.ndarray,
+                 threshold: float = 0.01,
                  source: int = 0,
-                 weights: list = None,
+                 weights: List = None,
                  ignore_subset: bool = True) -> None:
         """
-        Calculate available paths useing the 
+        Calculate available paths useing the
         Hereditary Depth First (HDFS) algorithm:
 
-        corelations: np.ndarray -> NxN matrix from which 
+        corelations: np.ndarray -> NxN matrix from which
         the Binary Acceptance (BA) is drawn
         threshold: float -> minimum value for which BA_ij = True
         source: int -> initial index for HDFS
@@ -33,6 +39,9 @@ class PathFinder():
         self.threshold = threshold
         self.source = source
         self.no_subset = ignore_subset
+        # set weights
+        if weights is None:
+            weights: List = [1.0] * self.corr.shape[0]
         # dimentions of corelations
         self.dim = np.array(self.corr.shape)
         # boolian matrix of allowed transitions
@@ -44,16 +53,18 @@ class PathFinder():
         self.set_weight_func(self.get_weight)
         self.set_weight_limit_func(self.get_weight)
 
-    def set_weight_func(self, weight_funk: Callable) -> None:
+    def set_weight_func(self,
+                        weight_funk: Callable) -> None:
         self.weight_func = weight_funk
 
-    def set_weight_limit_func(self, max_weighting: Callable) -> None:
+    def set_weight_limit_func(self,
+                              max_weighting: Callable) -> None:
         self.weight_lim_func = max_weighting
 
     def set_allowed_paths(self) -> None:
         """
         set allowed paths attribute with
-        default source_mask to 
+        default source_mask to
         """
         self.allowed_paths = self.path_bool()
 
@@ -71,31 +82,36 @@ class PathFinder():
         """
         return np.triu(self.allowed_paths, 1)
 
-    def get_weight(self, path: list) -> float:
-        """ Get the sum of the weights for a given path of indices"""
+    def get_weight(self, path: List) -> float:
+        """ Get the sum of the weights
+        for a given path of indices"""
         if len(path) > 0:
             return np.sum(self.weights[path])
         else:
             return 0.0
 
-    def reset_source(self, source: int = 0) -> None:
+    def reset_source(self,
+                     source: int = 0) -> None:
+        # TODO: Reset the source node, if the algorithm was applied onece
         """
-        reset the source node
+        Reset the source node
         """
         if source >= self.dim[0]:
-            print('Source out of range Defaulting to zero')
+            print("Source out of range Defaulting to zero")
             source = 0
         self.source = source
         self.set_allowed_paths()
         try:
             self.set_weighted_graph(weights=self.weights)
         except AttributeError:
-            print('weights not set: Defaulting to a uniform weighting of 1')
+            print("Weights not set: "
+                  "Defaulting to a uniform weighting of 1")
             self.set_weighted_graph(weights=None)
 
-    def set_weighted_graph(self, weights: list) -> None:
+    def set_weighted_graph(self,
+                           weights: List) -> None:
         """
-        add weights to the node edges
+        Add weights to the node edges.
         """
         if weights is None:
             weights = self.__no_weight
@@ -109,17 +125,20 @@ class PathFinder():
         self.graph.add_weighted_edges(edges)
         self.weights = np.array(weights)
 
-    def path_bool(self, idx: int = None, msk: np.ndarray = None) -> np.ndarray:
+    def path_bool(self,
+                  idx: int = None,
+                  msk: np.ndarray = None) -> np.ndarray:
         """
-        Set up the binary independency matrix setting the 
-        source diagonal element to True. 
-
-        source_mask: mask matrix by source column (increase selection efficiency)
+        Set up the binary independency matrix setting the
+        source diagonal element to True.
+        source_mask: mask matrix by source
+        column (increase selection efficiency)
         """
         if idx is None:
             idx = self.source
         if msk is None:
-            msk = np.ones(self.dim+1, dtype='bool')
+            msk = np.ones(self.dim+1,
+                          dtype='bool')
             msk[:-1:, :-1:] = self.corr_mask
             msk[idx, idx] = True
         # TODO Is this necessary
@@ -129,7 +148,8 @@ class PathFinder():
         msk[sub, :] = False
         return msk
 
-    def find_edges(self, weights: list = None) -> list:
+    def find_edges(self,
+                   weights: List = None) -> List:
         """
         finds edges of the graph
         weights: (optional) default to 1 if None
@@ -154,10 +174,11 @@ class PathFinder():
         return self.run_sum/self.run_num
 
     @staticmethod
-    def strip_subdict(dct: dict, target: str) -> list:
+    def strip_subdict(dct: Dict,
+                      target: str) -> List:
         return [p[target] for _, p in dct.items()]
 
-    def check_if_subset(self, path: list) -> bool:
+    def check_if_subset(self, path: List) -> bool:
         if not path:
             return False
         # get allowed nodes that are less than the initial
@@ -165,15 +186,16 @@ class PathFinder():
         idx = np.argwhere(prev).flatten().tolist()
         if not idx:
             return False
-        for l in range(1, len(idx)+1):
-            for comb in combinations(idx, l):
+        for k in range(1, len(idx)+1):
+            for comb in combinations(idx, k):
                 if self.is_allowed(list(comb) + path):
                     return True
         return False
 
-    def all_conditional_paths(self, trim: bool = True) -> list:
+    def all_conditional_paths(self,
+                              trim: bool = True) -> List:
         """
-        Hereditary Depth First Search 
+        Hereditary Depth First Search
         Returns all paths under the Hereditary condition.
 
         target: finishing node
@@ -217,33 +239,36 @@ class PathFinder():
                 good_nodes.pop()
                 visited.popitem()
 
-    def top_weighted_cpath(self, path_weight: dict = None, top: int = 1) -> dict:
+    def top_weighted_cpath(self,
+                           path_weight: Dict = None,
+                           top: int = 1) -> Dict:
         """
-        Weighted Hereditary Depth First Search 
-        Returns best path for a given source under 
+        Weighted Hereditary Depth First Search
+        Returns best path for a given source under
         the weighted Hereditary condition.
 
-        max_wgt: maximum weight for running comparison 
+        max_wgt: maximum weight for running comparison
         trim: (bool) trim the target node from result
 
         """
         if path_weight is None:
             path_weight = {i: {'path': [], 'weight': 0.0} for i in range(top)}
-        # initiate empty list for best path
+        # initiate empty List for best path
         # max_pth = {i:None for i in range(len(max_wgt))}
         # set cutoff and limit to the length of correlations
         cutoff = self.dim[0] + 1
         target = self.dim[0]
         # chk_ss = False
-        # initiate the visited list with the source node
+        # initiate the visited List with the source node
         visited = dict.fromkeys([self.source])
-        # stack is a list of generators that builds to provide the subset of
+        # stack is a List of generators that builds to provide the subset of
         # available nodes for each child with all nodes > child
         stack = [(v for _, v in self.graph.edges(self.source))]
         # good nodes are the compleat set of available nodes for each child
         # good_nodes = [self.good_nodes(self.source)]
         good_nodes = [set(v for _, v in self.graph.edges(self.source))]
-        max_wgt = np.array(self.strip_subdict(path_weight, 'weight'))
+        max_wgt = np.array(self.strip_subdict(dct=path_weight,
+                                              target='weight'))
         # itterate over nodes building and dropping from stack until empty
         while stack:
             # define childern as the generator from the last element of stack
@@ -264,10 +289,11 @@ class PathFinder():
                 pth = list(visited) + [child]
                 # take the intersection of nodes available to the child
                 # with those available to all previous nodes in path
-                # gn = set(v for _, v in self.graph.edges(child)).intersection(*good_nodes)
+                # gn = set(v for _, v in self.graph.edges(child)).
+                # intersection(*good_nodes)
                 gn = set(v for _, v in self.graph.edges(
                     child)).intersection(good_nodes[-1])
-                # list the available nodes from the set gn
+                # List the available nodes from the set gn
                 child_pths = np.array(list(gn))
                 # weight of current path
                 currnt_wgt = self.weight_func(pth)
@@ -277,27 +303,36 @@ class PathFinder():
                 # target reached
                 if child == target:
                     # self.update_runsum(len(pth)-1)
-                    paths = self.strip_subdict(path_weight, 'path')
+                    paths = self.strip_subdict(
+                        dct=path_weight,
+                        target='path')
                     # is the current weight the best so far
                     if currnt_wgt > max_wgt.min():
                         # if self.no_subset:
-                        #     chk_ss = any([set(pth[:-1:]).issubset(item) for item in paths])
+                        #     chk_ss = any([set(pth[:-1:]).issubset(item)
+                        # for item in paths])
                         #     if not chk_ss:
                         #         chk_ss = self.check_if_subset(pth[:-1:])
                         # if not chk_ss:
                         # self.update_runsum(len(pth)-1)
                         if top > 1:
                             # paths = self.strip_subdict(path_weight, 'path')
-                            wgts = self.strip_subdict(path_weight, 'weight')
+                            wgts = self.strip_subdict(
+                                dct=path_weight,
+                                target='weight')
                             paths.append(pth[:-1:])
                             wgts.append(currnt_wgt)
                             path_weight = self.rank_path_by_weight(
-                                paths, weights=wgts, top=top)
+                                paths=paths,
+                                weights=wgts,
+                                top=top)
                         else:
                             path_weight = {
                                 0: {'path': pth[:-1:], 'weight': currnt_wgt}}
                         max_wgt = np.array(
-                            self.strip_subdict(path_weight, 'weight'))
+                            self.strip_subdict(
+                                dct=path_weight,
+                                target='weight'))
                 # is the remaining weight enough to continue down this path
                 if (currnt_wgt + remain_wgt) > max_wgt.min():
                     visited[child] = None
@@ -315,14 +350,17 @@ class PathFinder():
                 visited.popitem()
         return path_weight
 
-    def find_path(self, runs: int = None, top: int = 1) -> dict:
+    def find_path(self,
+                  runs: int = None,
+                  top: int = 1) -> Dict:
 
         if runs is None or runs > self.dim[0]:
             runs = self.dim[0]
-        # print('runs:', runs)
+        print("\nStart finding top graph...\n")
         pth = None
-        for i in range(0, runs):
-            pth = self.top_weighted_cpath(path_weight=pth, top=top)
+        for i in trange(0, runs):
+            pth = self.top_weighted_cpath(path_weight=pth,
+                                          top=top)
             if i < self.dim[0]-1:
                 self.reset_source(i+1)
             # if i > max_c:
@@ -331,7 +369,9 @@ class PathFinder():
 
         return pth
 
-    def find_all_paths(self, runs: int = None, top: int = None) -> dict:
+    def find_all_paths(self,
+                       runs: int = None,
+                       top: int = None) -> Dict:
 
         max_c = self.dim[0]
         if runs is None or runs > max_c:
@@ -354,7 +394,9 @@ class PathFinder():
             #     break
         return self.rank_path_by_weight(pths, top=top)
 
-    def is_allowed(self, path, skip: int = 0) -> bool:
+    def is_allowed(self,
+                   path,
+                   skip: int = 0) -> bool:
         """
         Check if given path is allowed
         """
@@ -363,7 +405,10 @@ class PathFinder():
                 return False
         return True
 
-    def rank_path_by_weight(self, paths: list, weights: list = None, top=None) -> dict:
+    def rank_path_by_weight(self,
+                            paths: List,
+                            weights: List = None,
+                            top=None) -> Dict:
         """
         Sort a list of paths by the weights
         returns dictionary of paths + weights ranked from 0 (best)
@@ -383,7 +428,8 @@ class PathFinder():
                 ret[i] = {'path': paths[item], 'weight': weights[item]}
         return ret
 
-    def get_path_weights(self, paths: list) -> list:
+    def get_path_weights(self,
+                         paths: List) -> List:
         """
         Get the weight of a given path
         path: single path list
@@ -400,39 +446,6 @@ class PathFinder():
     @property
     def __no_weight(self):
         """
-        artificialy set weights == 1
+        Artificialy set weights == 1.
         """
         return [1] * len(self.allowed_paths)
-
-
-if __name__ == '__main__':
-    import time
-
-    # seed = np.random.randint(low=0, high=1e6)
-    seed = 500
-    np.random.seed(seed)
-    print(f"seed = {seed}")
-    N = 1000
-    p = 0.1
-    rand_bool = np.triu(np.random.choice(
-        [True, False], size=(N, N), p=[p, 1-p]), 1)
-    dummy = rand_bool + rand_bool.T
-    weights = np.sort(np.random.rand(len(dummy)))[::-1]
-
-    # def get_weight(path:list, weight:np.ndarray)-> np.ndarray:
-    #     if path:
-    #         return np.sum(weight[path]) - np.log(len(path))
-    #     else:
-    #         return 0
-
-    pf = PathFinder(np.array(~dummy, dtype=int),
-                    weights=weights, ignore_subset=True)
-    # pf.set_weight_func(lambda pth: get_weight(pth, pf.weights))
-    t1 = time.time()
-    print(pf.find_path(top=5))
-    print(f"Time: {time.time() - t1} s")
-    pf.reset_source()
-    # pf.set_weight_func(lambda pth: get_weight(pth, weights))
-    t2 = time.time()
-    print(pf.find_all_paths(top=5))
-    print(f"Time: {time.time() - t2} s")

@@ -246,6 +246,7 @@ def main() -> int:
         df_event_SR, sorted_dict_SR_weigths = sort_df_SR_dep_weights(
             df_event_SR=df_event_SR,
             weights=weights_SR)
+        weights_SR = list(sorted_dict_SR_weigths.values())
         # change to sorted version
         non_zero_column_names = df_event_SR.columns.to_list()
 
@@ -259,6 +260,7 @@ def main() -> int:
         SR_names=non_zero_column_names,
         inv=True)
 
+    # TODO: think about different correlation methods
     # iterate through the combs
     combs = [comb for comb in combs]
     for comb in tqdm(combs):
@@ -334,11 +336,10 @@ def main() -> int:
         corelations=pearson_coeff,
         threshold=0.01,
         source=0,
-        weights=None)
-    # incorrect with weights
+        weights=weights_SR)
     # start the algorithm to find the best path
 
-    proposed_paths: Dict = path_finder.find_all_paths()
+    proposed_paths: Dict = path_finder.find_path(top=5)
 
     # plot the top=1 path into binary matrix
     process_matrix_path_plotting: Process = Process(
@@ -353,17 +354,10 @@ def main() -> int:
         SR_names=non_zero_column_names,
         path_dictionary=proposed_paths)
 
-    # sorted paths
-    sorted_proposed_path: Dict = sort_proposed_paths(
-        best_SR_comb=proposed_paths_SR_Names,
-        dict_SR_weights=sorted_dict_SR_weigths)
-
     # save the proposed paths to a txt file
     # and print nicely on the command line
-    print(sort_proposed_paths)
-    result(best_SR_comb=sorted_proposed_path,
-           dict_SR_weights=sorted_dict_SR_weigths,
-           top=5)
+    result(proposed_paths=proposed_paths_SR_Names,
+           dict_SR_weights=sorted_dict_SR_weigths)
 
     # 8) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
