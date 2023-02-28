@@ -134,12 +134,10 @@ def main() -> int:
     SR_names: List[str]
     event_SR_matrix_combined: np.array
 
-    # concatenate the matrices
+    # preprocess input
     event_SR_matrix_combined, SR_names = preprocess_input(
         analysis_names=analysis_names,
         file_paths=file_paths)
-
-    print(SR_names)
 
     # convert into dataframe
     df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
@@ -261,8 +259,8 @@ def main() -> int:
         threshold=0.01,
         source=0,
         weights=weights_SR)
-    # start the algorithm to find the best path
 
+    # start the algorithm to find the best path
     proposed_paths: Dict = path_finder.find_path(top=5)
 
     # plot the top=1 path into binary matrix
