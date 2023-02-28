@@ -23,8 +23,7 @@ from exceptions.exceptions import (NonSimpleAnalysisFormat,
 from utils.functions import (calc_num_combs, calc_pearson_corr,
                              calc_SR_sensitivity, check_sufficient_statistics,
                              df_mapping_dict, indices_to_SR_names,
-                             sort_df_SR_dep_weights, sort_proposed_paths,
-                             threshold_corr_matrix)
+                             sort_df_SR_dep_weights, threshold_corr_matrix)
 from utils.path_finder import PathFinder
 from utils.plotting import (SR_matrix_plotting, corr_matrix_plotting,
                             correlation_free_entries_marking)
@@ -333,7 +332,7 @@ def main() -> int:
     # IMPORTANT: These algorithms are taken from the TACO SW.
     # initialize the path finder
     path_finder: PathFinder = PathFinder(
-        corelations=pearson_coeff,
+        correlations=pearson_coeff,
         threshold=0.01,
         source=0,
         weights=weights_SR)

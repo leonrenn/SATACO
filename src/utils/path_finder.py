@@ -20,7 +20,7 @@ from utils.graph import Graph
 
 
 class PathFinder():
-    def __init__(self, corelations: np.ndarray,
+    def __init__(self, correlations: np.ndarray,
                  threshold: float = 0.01,
                  source: int = 0,
                  weights: List = None,
@@ -35,7 +35,7 @@ class PathFinder():
         source: int -> initial index for HDFS
         """
         self.run_num, self.run_sum = 0.0, 0.0
-        self.corr = corelations
+        self.corr = correlations
         self.threshold = threshold
         self.source = source
         self.no_subset = ignore_subset
@@ -353,7 +353,20 @@ class PathFinder():
     def find_path(self,
                   runs: int = None,
                   top: int = 1) -> Dict:
+        """Find longest path in DAG with suited algorithm
+        an return just the top paths.
 
+        Args:
+            runs (int, optional): Number of runs. 
+            Defaults to None.
+            top (int, optional): Number of returned paths.
+            Defaults to 1.
+
+        Returns:
+            Dict: Dictionary holding path and weight for certain
+            path index.
+        """
+        self.reset_source(source=self.source)
         if runs is None or runs > self.dim[0]:
             runs = self.dim[0]
         print("\nStart finding top graph...\n")
@@ -363,16 +376,25 @@ class PathFinder():
                                           top=top)
             if i < self.dim[0]-1:
                 self.reset_source(i+1)
-            # if i > max_c:
-            #     print('Breaking!! Source beyond dimension')
-            #     break
-
         return pth
 
     def find_all_paths(self,
                        runs: int = None,
                        top: int = None) -> Dict:
+        """Find all paths in DAG with suited algorithm
+        an return just the top paths.
 
+        Args:
+            runs (int, optional): Number of runs. 
+            Defaults to None.
+            top (int, optional): Number of returned paths.
+            Defaults to 1.
+
+        Returns:
+            Dict: Dictionary holding path and weight for certain
+            path index.
+        """
+        self.reset_source(source=self.source)
         max_c = self.dim[0]
         if runs is None or runs > max_c:
             runs = max_c
@@ -397,8 +419,14 @@ class PathFinder():
     def is_allowed(self,
                    path,
                    skip: int = 0) -> bool:
-        """
-        Check if given path is allowed
+        """Check if given path is allowed.
+
+        Args:
+            path (_type_): List of indices
+            skip (int, optional): Defaults to 0.
+
+        Returns:
+            bool: _description_
         """
         for item in combinations(path[skip::], 2):
             if not self.corr_mask[item]:
