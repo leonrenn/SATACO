@@ -357,7 +357,7 @@ class PathFinder():
         an return just the top paths.
 
         Args:
-            runs (int, optional): Number of runs. 
+            runs (int, optional): Number of runs.
             Defaults to None.
             top (int, optional): Number of returned paths.
             Defaults to 1.
@@ -385,7 +385,7 @@ class PathFinder():
         an return just the top paths.
 
         Args:
-            runs (int, optional): Number of runs. 
+            runs (int, optional): Number of runs.
             Defaults to None.
             top (int, optional): Number of returned paths.
             Defaults to 1.

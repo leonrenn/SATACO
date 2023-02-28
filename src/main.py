@@ -5,7 +5,7 @@ import os
 import time
 from argparse import ArgumentParser
 from itertools import combinations_with_replacement
-from multiprocessing import Process, cpu_count
+from multiprocessing import Process
 from typing import Dict, List
 
 import numpy as np
@@ -16,20 +16,20 @@ from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
-                                   NotEnoughStatistcis,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
                                    SAWrongArgument)
-from utils.functions import (calc_num_combs, calc_pearson_corr,
-                             calc_SR_sensitivity, check_sufficient_statistics,
+from utils.functions import (calc_num_combs, calc_SR_sensitivity,
                              df_mapping_dict, indices_to_SR_names,
                              sort_df_SR_dep_weights, threshold_corr_matrix)
+from utils.parsing import build_parser
 from utils.path_finder import PathFinder
-from utils.plotting import (SR_matrix_plotting, corr_matrix_plotting,
+from utils.plotting import (corr_matrix_plotting,
                             correlation_free_entries_marking)
+from utils.preprocessing import preprocess_input
 from utils.printer import info, result, sataco, summary
-from utils.saving import (save_df_corr, save_df_SR_event, save_df_SR_SR,
-                          save_sr_names)
+from utils.saving import (clear_result_dir, save_df_corr, save_df_SR_event,
+                          save_SR_names)
 
 # MAIN
 
@@ -37,7 +37,9 @@ from utils.saving import (save_df_corr, save_df_SR_event, save_df_SR_SR,
 def main() -> int:
     # 0) START
     STARTTIME = time.time()
-    num_cpu: int = cpu_count()
+
+    # delete all files from result folders
+    clear_result_dir()
 
     sataco()
     info()
@@ -45,19 +47,7 @@ def main() -> int:
     # 1) ARGUMENTS FROM CLI
     # parse for arguments from CLI and provide help
 
-    parser: ArgumentParser = ArgumentParser()
-    parser.add_argument("-r",
-                        "--root",
-                        type=str, required=False,
-                        help=".root files as input from "
-                        "SimpleAnalysis Tool.")
-
-    parser.add_argument("-d",
-                        "--droot",
-                        type=str,
-                        required=False,
-                        help="Directory with .root files"
-                        "from SimpleAnalysis Tool.")
+    parser: ArgumentParser = build_parser()
     parser_dict: Dict[str, str] = vars(parser.parse_args())
 
     try:
@@ -141,53 +131,27 @@ def main() -> int:
     print("\n")
 
     # 3.1) CONCATENATION OF EVENT SIGNAL REGION MATRICES
-    event_SR_matrix_list: List[np.array] = []
-    sr_names: List[str] = []
-
-    print("Files preprocessing:\n")
-    # TODO: Think about how muliprocessing would work on this
-    for _, file_path in enumerate(tqdm(file_paths)):
-        # opening the file
-        with ur.open(file_path) as file:
-            # access to the ntuple structure
-            ttree = file["ntuple"]
-            # signal regions are the keys of the ttree
-            signal_regions = ttree.keys()
-            # signal regions with counts of events
-            # that passed
-            ttree_arrays = ttree.arrays()
-            # empty matrix to store data in numpy style
-            events: np.array = np.empty(
-                shape=(len(ttree_arrays), len(signal_regions)),
-                dtype=np.float32)
-            # iterating through signal regions to extract the
-            # arrays and store row wise
-            for sr_idx, sr in enumerate(signal_regions):
-                sr_names.append(sr)
-                events[:, sr_idx] = np.array(
-                    ttree_arrays[sr], dtype=np.float32)
-            # list of matrices
-            event_SR_matrix_list.append(events)
+    SR_names: List[str]
+    event_SR_matrix_combined: np.array
 
     # concatenate the matrices
-    event_SR_matrix_combined: np.array = np.concatenate(
-        event_SR_matrix_list,
-        axis=1,
-        dtype=np.float32)
-    print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
-          "Number of SRs: "
-          f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
+    event_SR_matrix_combined, SR_names = preprocess_input(
+        analysis_names=analysis_names,
+        file_paths=file_paths)
+
+    print(SR_names)
 
     # convert into dataframe
     df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
         data=event_SR_matrix_combined,
         dtype=np.float32)
     df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
-        columns=df_mapping_dict(sr_names))
+        columns=df_mapping_dict(SR_names))
 
     # 3.2) OVERLAP CALCULATION
     # for overlap calculation the events and the eventWeights
     # are deleted
+    df_event_SR = df_event_SR_matrix_combined
     for _ in analysis_names:
         df_event_SR = df_event_SR_matrix_combined.drop(
             columns=["Event", "eventWeight"])
@@ -199,7 +163,7 @@ def main() -> int:
     process_save_df_SR_event.start()
 
     # save signal regions in txt file
-    save_sr_names(sr_names=sr_names,
+    save_SR_names(SR_names=SR_names,
                   zero_cols=False)
 
     # combinatorics through the different columns
@@ -221,13 +185,13 @@ def main() -> int:
     df_event_SR = df_event_SR[non_zero_column_names]
     # save non zero column names into txt file
     # not necessary to multiprocess because this is fast
-    save_sr_names(sr_names=non_zero_column_names,
+    save_SR_names(SR_names=non_zero_column_names,
                   zero_cols=True)
     print(
         "\nRemoved in total: "
         f"{len(column_names) - len(non_zero_column_names)}")
 
-    SR_SR_matrix: np.array = np.zeros(
+    correlation_matrix: np.array = np.zeros(
         shape=(len(non_zero_column_names), len(non_zero_column_names)),
         dtype=np.float32)
 
@@ -259,69 +223,30 @@ def main() -> int:
         SR_names=non_zero_column_names,
         inv=True)
 
-    # TODO: think about different correlation methods
     # iterate through the combs
     combs = [comb for comb in combs]
     for comb in tqdm(combs):
-        # shared event calculates a vector that tells which
-        # events actually are accepted for both signal regions
-        # devide by two because take mean of both events
-        shared_events: np.array = np.array(
-            object=df_event_SR[comb[0]] * df_event_SR[comb[-1]],
-            dtype=bool) *\
-            np.array(
-                object=df_event_SR[comb[0]] + df_event_SR[comb[-1]],
-                dtype=np.float32) * 0.5
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
-        SR_SR_matrix[i, j] = np.sum(a=shared_events)
+        correlation_matrix[i, j] = np.correlate(
+            a=df_event_SR[comb[0]],
+            v=df_event_SR[comb[1]])/(np.linalg.norm(df_event_SR[comb[0]]) *
+                                     np.linalg.norm(df_event_SR[comb[1]]))
         # fill the full matrix, but the i=j index not twice
         if i != j:
-            SR_SR_matrix[j, i] = SR_SR_matrix[i, j]
+            correlation_matrix[j, i] = correlation_matrix[i, j]
 
     # save in dataframe and save to parquet
-    df_SR_SR: pd.DataFrame = pd.DataFrame(
-        data=SR_SR_matrix,
-        columns=non_zero_column_names)
-
-    save_df_SR_SR(df_SR_SR=df_SR_SR)
-    process_save_df_SR_SR: Process = Process(
-        target=save_df_SR_SR,
-        args=(df_SR_SR,))
-    process_save_df_SR_SR.start()
-
-    # 4) VISUALIZATION
-    process_SR_matrix_plotting: Process = Process(
-        target=SR_matrix_plotting,
-        args=(SR_SR_matrix, non_zero_column_names))
-    process_SR_matrix_plotting.start()
-
-    # 5) SUFFICIENT NUMBER OF EVENTS CHECK
-    # -> ACCEPTANCE MATRIX
-    try:
-        check_sufficient_statistics(
-            SR_SR_matrix=SR_SR_matrix,
-            event_num=df_event_SR_matrix_combined.shape[0])
-    except NotEnoughStatistcis:
-        print("The accepatance matrix has not had enough entries \n"
-              "for validating an overlap.\n"
-              "Exit.")
-        return 8
-
-    # 6) CALCULATION OF PEARSON COEFFICIENT AND CUTTING
-    pearson_coeff: np.array = calc_pearson_corr(SR_SR_matrix=SR_SR_matrix)
-    # save in dataframe and save to csv
-    df_corr: pd.DataFrame = pd.DataFrame(
-        data=pearson_coeff,
+    df_correlation: pd.DataFrame = pd.DataFrame(
+        data=correlation_matrix,
         columns=non_zero_column_names)
 
     process_save_df_corr: Process = Process(
         target=save_df_corr,
-        args=(df_corr,))
+        args=(df_correlation,))
     process_save_df_corr.start()
 
-    # -> OVERLAP MATRIX
     corr_matrix_binary = threshold_corr_matrix(
-        correlation_matrix=pearson_coeff)
+        correlation_matrix=correlation_matrix)
 
     process_corr_matrix_plotting: Process = Process(
         target=corr_matrix_plotting,
@@ -332,7 +257,7 @@ def main() -> int:
     # IMPORTANT: These algorithms are taken from the TACO SW.
     # initialize the path finder
     path_finder: PathFinder = PathFinder(
-        correlations=pearson_coeff,
+        correlations=correlation_matrix,
         threshold=0.01,
         source=0,
         weights=weights_SR)
@@ -360,12 +285,10 @@ def main() -> int:
 
     # 8) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
-    process_save_df_SR_SR.join()
     process_save_df_corr.join()
-    process_SR_matrix_plotting.join()
     process_corr_matrix_plotting.join()
     process_matrix_path_plotting.join()
-    print("\nAll 6 processes joined.")
+    print("\nAll 4 processes joined.")
 
     # 9) SUMMARY
     summary(STARTTIME=STARTTIME)

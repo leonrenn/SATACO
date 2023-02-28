@@ -2,7 +2,6 @@
 different files to the console.
 """
 
-import json
 import pathlib
 from datetime import timedelta
 from time import time
