@@ -14,7 +14,8 @@ import uproot as ur
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
-from exceptions.exceptions import (NonSimpleAnalysisFormat,
+from exceptions.exceptions import (InvalidArgumentError,
+                                   NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAValueError,
@@ -36,7 +37,7 @@ from utils.saving import (clear_result_dir, save_df_corr, save_df_SR_event,
 
 def main() -> int:
     # 0) START
-    STARTTIME = time.time()
+    STARTTIME: float = time.time()
 
     # delete all files from result folders
     clear_result_dir()
@@ -196,9 +197,15 @@ def main() -> int:
     # before saving rearange matrix with weights
     # generate the weights
     print("\nGenerating weights for hereditary search:\n")
+    calculate: bool
+    if parser_dict["no_weights"] is True:
+        calculate = False
+    else:
+        calculate = True
+
     weights_SR: List[float] = calc_SR_sensitivity(df_event_SR=df_event_SR,
                                                   method="simple",
-                                                  calculate=True)
+                                                  calculate=calculate)
     # sort dataframe if weights are calculated
     sorted_dict_SR_weigths: Dict = dict(
         zip(non_zero_column_names, [1]*len(non_zero_column_names)))
@@ -254,9 +261,22 @@ def main() -> int:
     # 7) GRAPH ALGORITHM
     # IMPORTANT: These algorithms are taken from the TACO SW.
     # initialize the path finder
+    threshold: float
+    if parser_dict["threshold"] is None:
+        threshold = 0.01
+    else:
+        try:
+            threshold = parser_dict["threshold"]
+            if threshold <= 0.00:
+                raise InvalidArgumentError
+
+        except InvalidArgumentError:
+            print("\nThe argument for the threshold is not valid.")
+            return 9
+
     path_finder: PathFinder = PathFinder(
         correlations=correlation_matrix,
-        threshold=0.01,
+        threshold=threshold,
         source=0,
         weights=weights_SR)
 

@@ -54,3 +54,8 @@ class NotEnoughStatistcis(Exception):
     aquired enough statistics. (Maybe delete exception
     because analysis must continue in either way)"""
     pass
+
+
+class InvalidArgumentError(Exception):
+    """Invalid arguments as threshold.
+    """
