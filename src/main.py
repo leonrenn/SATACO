@@ -139,6 +139,11 @@ def main() -> int:
             non_zero_column_names.append(name)
         else:
             print(f"\t - Removed Signal Region: {name}")
+
+    # alternatively:
+    # df_event_SR = df_event_SR.loc[:, (df_event_SR != 0).any(axis=0)]
+    # non_zero_column_names = list(df_event_SR.columns)
+
     if len(non_zero_column_names) == 0:
         print("\nNo columns since no columns accepted a single event.")
         return 8
@@ -214,10 +219,12 @@ def main() -> int:
     corr_matrix_binary = threshold_corr_matrix(
         correlation_matrix=correlation_matrix)
 
-    process_corr_matrix_plotting: Process = Process(
-        target=corr_matrix_plotting,
-        args=(corr_matrix_binary, non_zero_column_names))
-    process_corr_matrix_plotting.start()
+    process_corr_matrix_plotting: Process
+    if parser_dict["no_plots"] is not True:
+        process_corr_matrix_plotting: Process = Process(
+            target=corr_matrix_plotting,
+            args=(corr_matrix_binary, non_zero_column_names))
+        process_corr_matrix_plotting.start()
 
     # 7) GRAPH ALGORITHM
     # IMPORTANT: These algorithms are taken from the TACO SW.
@@ -242,15 +249,23 @@ def main() -> int:
         weights=weights_SR)
 
     # start the algorithm to find the best path
-    proposed_paths: Dict = path_finder.find_path(top=5)
+    proposed_paths: Dict
+    if parser_dict["top_paths"] is not None:
+        proposed_paths: Dict = path_finder.find_path(
+            top=parser_dict["top_paths"])
+    else:
+        proposed_paths: Dict = path_finder.find_path(
+            top=1)
 
-    # plot the top=1 path into binary matrix
-    process_matrix_path_plotting: Process = Process(
-        target=correlation_free_entries_marking,
-        args=(corr_matrix_binary,
-              proposed_paths,
-              non_zero_column_names))
-    process_matrix_path_plotting.start()
+    process_matrix_path_plotting: Process
+    if parser_dict["no_plots"] is not True:
+        # plot the top=1 path into binary matrix
+        process_matrix_path_plotting: Process = Process(
+            target=correlation_free_entries_marking,
+            args=(corr_matrix_binary,
+                  proposed_paths,
+                  non_zero_column_names))
+        process_matrix_path_plotting.start()
 
     # change indices to SR names
     proposed_paths_SR_Names: Dict = indices_to_SR_names(
@@ -265,9 +280,13 @@ def main() -> int:
     # 8) JOINING MULTIPROCESSES
     process_save_df_SR_event.join()
     process_save_df_corr.join()
-    process_corr_matrix_plotting.join()
-    process_matrix_path_plotting.join()
-    print("\nAll 4 processes joined.")
+
+    if parser_dict["no_plots"] is not True:
+        process_corr_matrix_plotting.join()
+        process_matrix_path_plotting.join()
+        print("\nAll 2 processes joined.")
+    else:
+        print("\nAll 4 processes joined.")
 
     # 9) SUMMARY
     summary(STARTTIME=STARTTIME)

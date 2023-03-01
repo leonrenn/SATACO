@@ -42,7 +42,19 @@ def build_parser() -> ArgumentParser:
                         help="Force that all signal regions"
                         " are treated equally in "
                         "significance.")
-
+    parser.add_argument("-np",
+                        "--no_plots",
+                        required=False,
+                        action="store_true",
+                        help="No plots are save in the"
+                        "result dir.")
+    parser.add_argument("-tp",
+                        "--top_paths",
+                        type=int,
+                        required=False,
+                        help="Number of top paths"
+                        "printed on CLI and saved"
+                        "in result dir")
     return parser
 
 
