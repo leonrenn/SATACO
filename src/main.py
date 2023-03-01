@@ -232,9 +232,9 @@ def main() -> int:
     combs = [comb for comb in combs]
     for comb in tqdm(combs):
         i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
-        correlation_matrix[i, j] = np.correlate(
+        correlation_matrix[i, j] = np.dot(
             a=df_event_SR[comb[0]],
-            v=df_event_SR[comb[1]])/(np.linalg.norm(df_event_SR[comb[0]]) *
+            b=df_event_SR[comb[1]])/(np.linalg.norm(df_event_SR[comb[0]]) *
                                      np.linalg.norm(df_event_SR[comb[1]]))
         # fill the full matrix, but the i=j index not twice
         if i != j:
