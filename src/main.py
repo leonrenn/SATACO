@@ -1,7 +1,6 @@
-"""Main Program called from the command line.
 """
-
-import os
+Main Program called from the command line.
+"""
 import time
 from argparse import ArgumentParser
 from itertools import combinations_with_replacement
@@ -10,31 +9,27 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-import uproot as ur
 from tqdm import tqdm
-from uproot.reading import ReadOnlyFile
 
 from exceptions.exceptions import (InvalidArgumentError,
                                    NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
                                    SADirectoryNotFoundError,
-                                   SAFileNotFoundError, SAValueError,
-                                   SAWrongArgument)
+                                   SAFileNotFoundError, SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_SR_sensitivity,
                              df_mapping_dict, indices_to_SR_names,
                              sort_df_SR_dep_weights, threshold_corr_matrix)
-from utils.parsing import build_parser
+from utils.parsing import build_parser, check_parser_input_files
 from utils.path_finder import PathFinder
 from utils.plotting import (corr_matrix_plotting,
                             correlation_free_entries_marking)
-from utils.preprocessing import preprocess_input
+from utils.preprocessing import check_for_input_correctness, preprocess_input
 from utils.printer import info, result, sataco, summary
 from utils.saving import (clear_result_dir, save_df_corr, save_df_SR_event,
                           save_SR_names)
 
+
 # MAIN
-
-
 def main() -> int:
     # 0) START
     STARTTIME: float = time.time()
@@ -42,87 +37,49 @@ def main() -> int:
     # delete all files from result folders
     clear_result_dir()
 
+    # print sataco letters on CLI
     sataco()
+    # print info on CLI
     info()
 
     # 1) ARGUMENTS FROM CLI
-    # parse for arguments from CLI and provide help
 
+    # 1.1) PARSE ARGUMENTS FROM CLI
     parser: ArgumentParser = build_parser()
     parser_dict: Dict[str, str] = vars(parser.parse_args())
 
+    # 1.2) CHECK FOR NECESSARY INPUT FILES IN PARSER
+    file_paths: List[str]
     try:
-        file_paths: List[str] = []
-        if parser_dict["root"] is not None and parser_dict["droot"] is None:
-            try:
-                if os.path.isdir(parser_dict["root"]) is True:
-                    raise SAWrongArgument
-                # split files in csv format from CLI
-                file_paths = parser_dict["root"].split(",")
-            except SAWrongArgument:
-                print("The argument is a directory '"
-                      f"{parser_dict['root']}',\n"
-                      "but a file is needed for this flag.")
-                return 1
-        elif parser_dict["root"] is None and parser_dict["droot"] is not None:
-            print(f"Entering given directory: {parser_dict['droot']}")
-            try:
-                if os.path.exists(parser_dict["droot"]) is True:
-                    file_paths = os.listdir(parser_dict["droot"])
-                    file_paths = [
-                        f"{parser_dict['droot']}/{path}"
-                        for path in file_paths]
-                else:
-                    raise SADirectoryNotFoundError
-            except SADirectoryNotFoundError:
-                print(f"The directory '{parser_dict['droot']}' "
-                      "was not found. Exit.")
-                return 2
-        elif parser_dict["root"] is None and parser_dict["droot"] is None:
-            raise NoParserArgumentsError
+        file_paths = check_parser_input_files(parser_dict=parser_dict)
+    except SAWrongArgument:
+        print("The argument is a directory '"
+              f"{parser_dict['root']}',\n"
+              "but a file is needed for this flag.")
+        return 1
+    except SADirectoryNotFoundError:
+        print(f"The directory '{parser_dict['droot']}' "
+              "was not found. Exit.")
+        return 2
     except NoParserArgumentsError:
-        print("No arguments were given via the command line, although required"
-              "at least one of [-r] or [-d].")
+        print("No arguments were given via the command line, although"
+              " required at least one of [-r] or [-d].")
         return 3
 
-    # 2) CHECK FOR EXISTENCE & FOR SA-FORMAT (BEFORE SCAN)
+    # 2) CHECK FOR EXISTENCE & FOR SA-FORMAT
     # the specific output format is specified under
     # https://simpleanalysis.docs.cern.ch in the OUTPUT section and is
     # dependend on the flags that were set for the analysis
     print("Checking correctness of input:\n")
     analysis_names: List[str] = []
     try:
-        for file_path in tqdm(file_paths):
-            analysis_name: str = os.path.basename(file_path).strip(".root")
-            analysis_names.append(analysis_name)
-
-            if os.path.exists(file_path) is False:
-                raise SAFileNotFoundError
-            try:
-                temp: ReadOnlyFile = ur.open(file_path)
-            except NotARootFile:
-                print(f"The file {file_path} is not in the root format. Exit.")
-                return 4
-            classnames = temp.classnames()
-            temp.close()
-            if str(classnames).find("ntuple") == -1:
-                raise NonSimpleAnalysisFormat
+        analysis_names = check_for_input_correctness(file_paths=file_paths)
+    except NotARootFile:
+        return 4
     except SAFileNotFoundError:
-        print(f"The file {file_path} could not be found. Exit.")
         return 5
-
-    except SAValueError:
-        print(f"The file {file_path} could not be read \n"
-              "with the uproot python module. Exit.")
-        return 6
-
     except NonSimpleAnalysisFormat:
-        print(f"The file {file_path} is in the format of \n"
-              f"{str(temp.classnames())}. This is not in the\n"
-              "expected SA format [-n] of {...'ntuple;_num_': 'TTree'...}.\n"
-              "Do not use option '-o' in simpleAnalysis.\n"
-              "Exit.")
-        return 7
+        return 6
 
     # 3) RUN ANALYSIS ON INPUT
     # info about which analyses where provided to SATACO
