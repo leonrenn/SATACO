@@ -82,6 +82,7 @@ def main() -> int:
         return 6
 
     # 3) RUN ANALYSIS ON INPUT
+
     # info about which analyses where provided to SATACO
     print("\nAnalyses SATACO runs on:")
     for analysis_name in analysis_names:
@@ -89,6 +90,7 @@ def main() -> int:
     print("\n")
 
     # 3.1) CONCATENATION OF EVENT SIGNAL REGION MATRICES
+
     SR_names: List[str]
     event_SR_matrix_combined: np.array
 
@@ -101,18 +103,20 @@ def main() -> int:
     df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
         data=event_SR_matrix_combined,
         dtype=np.float32)
+    # rename columns of dataframe
     df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
         columns=df_mapping_dict(SR_names))
 
     # 3.2) OVERLAP CALCULATION
+
     # for overlap calculation the events and the eventWeights
-    # are deleted
+    # are remove from dataframe
     df_event_SR = df_event_SR_matrix_combined
     for _ in analysis_names:
         df_event_SR = df_event_SR_matrix_combined.drop(
             columns=["Event", "eventWeight"])
 
-    # write to parquet as a part of the results
+    # write to parquet as part of the results
     process_save_df_SR_event = Process(
         target=save_df_SR_event,
         args=(df_event_SR,))
