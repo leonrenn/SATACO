@@ -122,7 +122,7 @@ def main() -> int:
         args=(df_event_SR,))
     process_save_df_SR_event.start()
 
-    # save signal regions in txt file
+    # save opensignal regions in txt file
     save_SR_names(SR_names=SR_names,
                   zero_cols=False)
 
