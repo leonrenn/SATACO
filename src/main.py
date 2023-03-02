@@ -18,7 +18,7 @@ from exceptions.exceptions import (InvalidArgumentError,
                                    SAFileNotFoundError, SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_SR_sensitivity,
                              df_mapping_dict, indices_to_SR_names,
-                             sort_df_SR_dep_weights, threshold_corr_matrix)
+                             sort_df_SR_dep_weights)
 from utils.parsing import build_parser, check_parser_input_files
 from utils.path_finder import PathFinder
 from utils.plotting import (corr_matrix_plotting,
@@ -91,10 +91,9 @@ def main() -> int:
 
     # 3.1) CONCATENATION OF EVENT SIGNAL REGION MATRICES
 
+    # preprocess input
     SR_names: List[str]
     event_SR_matrix_combined: np.array
-
-    # preprocess input
     event_SR_matrix_combined, SR_names = preprocess_input(
         analysis_names=analysis_names,
         file_paths=file_paths)
@@ -184,7 +183,8 @@ def main() -> int:
         # change to sorted version
         non_zero_column_names = df_event_SR.columns.to_list()
 
-    combs = combinations_with_replacement(non_zero_column_names, r=2)
+    combs = combinations_with_replacement(iterable=non_zero_column_names,
+                                          r=2)
     print("\nTo do are a total of "
           f"{calc_num_combs(len(non_zero_column_names))} combinations.\n")
 
@@ -216,19 +216,7 @@ def main() -> int:
         args=(df_correlation,))
     process_save_df_corr.start()
 
-    corr_matrix_binary = threshold_corr_matrix(
-        correlation_matrix=correlation_matrix)
-
-    process_corr_matrix_plotting: Process
-    if parser_dict["no_plots"] is not True:
-        process_corr_matrix_plotting: Process = Process(
-            target=corr_matrix_plotting,
-            args=(corr_matrix_binary, non_zero_column_names))
-        process_corr_matrix_plotting.start()
-
-    # 7) GRAPH ALGORITHM
-    # IMPORTANT: These algorithms are taken from the TACO SW.
-    # initialize the path finder
+    # get threshold from command line
     threshold: float
     if parser_dict["threshold"] is None:
         threshold = 0.01
@@ -242,6 +230,18 @@ def main() -> int:
             print("\nThe argument for the threshold is not valid.")
             return 9
 
+    process_corr_matrix_plotting: Process
+    if parser_dict["no_plots"] is not True:
+        process_corr_matrix_plotting: Process = Process(
+            target=corr_matrix_plotting,
+            args=(correlation_matrix,
+                  non_zero_column_names,
+                  threshold))
+        process_corr_matrix_plotting.start()
+
+    # 7) GRAPH ALGORITHM
+    # IMPORTANT: These algorithms are taken from the TACO SW.
+    # initialize the path finder
     path_finder: PathFinder = PathFinder(
         correlations=correlation_matrix,
         threshold=threshold,
@@ -262,9 +262,10 @@ def main() -> int:
         # plot the top=1 path into binary matrix
         process_matrix_path_plotting: Process = Process(
             target=correlation_free_entries_marking,
-            args=(corr_matrix_binary,
+            args=(correlation_matrix,
                   proposed_paths,
-                  non_zero_column_names))
+                  non_zero_column_names,
+                  threshold))
         process_matrix_path_plotting.start()
 
     # change indices to SR names
@@ -284,9 +285,9 @@ def main() -> int:
     if parser_dict["no_plots"] is not True:
         process_corr_matrix_plotting.join()
         process_matrix_path_plotting.join()
-        print("\nAll 2 processes joined.")
-    else:
         print("\nAll 4 processes joined.")
+    else:
+        print("\nAll 2 processes joined.")
 
     # 9) SUMMARY
     summary(STARTTIME=STARTTIME)

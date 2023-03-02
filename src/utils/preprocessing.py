@@ -3,6 +3,7 @@ Provides functions for the main program that are used for checking
 and preprocessing the input.
 """
 import os
+import time
 from typing import List
 
 import numpy as np
@@ -71,8 +72,6 @@ def preprocess_input(analysis_names: List[str],
     """
     # list for storing events of corresponding SR
     event_SR_matrix_list: List[np.array] = []
-    # names of the signal regions
-    SR_names: List[str] = []
     print("Files preprocessing:\n")
     for _, file_path in enumerate(tqdm(file_paths)):
         # opening the file
@@ -91,7 +90,6 @@ def preprocess_input(analysis_names: List[str],
             # iterating through signal regions to extract the
             # arrays and store row wise
             for sr_idx, sr in enumerate(signal_regions):
-                SR_names.append(sr)
                 events[:, sr_idx] = np.array(
                     ttree_arrays[sr], dtype=np.float32)
             # list of matrices
@@ -106,4 +104,4 @@ def preprocess_input(analysis_names: List[str],
           "Number of SRs: "
           f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
 
-    return event_SR_matrix_combined, SR_names
+    return event_SR_matrix_combined, signal_regions

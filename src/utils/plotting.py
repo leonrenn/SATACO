@@ -13,20 +13,19 @@ import numpy as np
 
 def corr_matrix_plotting(correlation_matrix: np.array,
                          column_names: List[str],
-                         show: bool = False) -> None:
+                         threshold: float) -> None:
     """Generates a figure of the correlation matrix showing
     which SR regions correlate.
 
     Args:
         correlation_matrix (np.array): Pearson Correlation Coeff.
         column_names (List[str]): Names of the SR regions.
-        show (bool, optional): Shows figure while
-        running the analysis run. Defaults to False.
     """
-    # from binary format into float format such that
-    # diagonal elements can be painted grey (self correlating SRs),
+
+    # diagonal elements are painted grey (self correlating SRs),
     # white for SR correlations below threshold and black for above
-    correlation_matrix = np.array(correlation_matrix, dtype=np.float32)
+    correlation_matrix = np.array(correlation_matrix < threshold,
+                                  dtype=np.float32)
     # indices of lower triangle and set them to 1
     indices_lower = np.tril_indices_from(correlation_matrix)
     correlation_matrix[indices_lower] = 1
@@ -41,7 +40,8 @@ def corr_matrix_plotting(correlation_matrix: np.array,
     plt.rc('font', **font)
     fig, ax = plt.subplots(figsize=(14, 14))
 
-    pcol = ax.pcolor(correlation_matrix, cmap=plt.cm.Greys)
+    ax.pcolor(correlation_matrix,
+              cmap=plt.cm.Greys)
 
     # put the major ticks at the middle of each cell
     ax.set_xticks(np.arange(len(column_names)) + 0.5,
@@ -60,31 +60,26 @@ def corr_matrix_plotting(correlation_matrix: np.array,
 
     fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
                 "/../../results/correlations_threshold.png")
-
-    if show is True:
-        plt.show()
     return
 
 
-def correlation_free_entries_marking(binary_correlation_matrix: np.array,
+def correlation_free_entries_marking(correlation_matrix: np.array,
                                      proposed_paths: Dict,
                                      column_names: List[str],
-                                     show: bool = False):
+                                     threshold: float):
     """Generates a figure that holds the binary correlation
     matrix as well as it colors the path of the uncorrolated
     SR in light green color.
 
     Args:
-        binary_correlation_matrix (np.array): Pearson Correlation Coeff.
+        Correlation_matrix (np.array): Correlation matrix.
         proposed_paths (Dict): Proposed paths py TACO.
         column_names (List[str]): SR names.
-        show (bool, optional): Shows figure while
-        running the analysis run. Defaults to False.
     """
-    # from binary format into float format such that
-    # diagonal elements can be painted grey (self correlating SRs),
+    # diagonal elements are painted grey (self correlating SRs),
     # white for SR correlations below threshold and black for above
-    correlation_matrix = np.array(binary_correlation_matrix, dtype=np.float32)
+    correlation_matrix = np.array(correlation_matrix < threshold,
+                                  dtype=np.float32)
     # indices of lower triangle and set them to 1
     indices_lower = np.tril_indices_from(correlation_matrix)
     correlation_matrix[indices_lower] = 1
@@ -100,7 +95,8 @@ def correlation_free_entries_marking(binary_correlation_matrix: np.array,
         correlation_matrix[comb[0], comb[1]] = -1
 
     cmap = matplotlib.cm.Greys
-    cmap.set_under(color='green', alpha=0.4)
+    cmap.set_under(color='green',
+                   alpha=0.4)
 
     font = {'size': 6}
 
@@ -108,7 +104,9 @@ def correlation_free_entries_marking(binary_correlation_matrix: np.array,
     plt.rc('font', **font)
     fig, ax = plt.subplots(figsize=(14, 14))
 
-    pcol = ax.pcolor(correlation_matrix, cmap=cmap, vmin=-0.001)
+    ax.pcolor(correlation_matrix,
+              cmap=cmap,
+              vmin=-0.001)
 
     # put the major ticks at the middle of each cell
     ax.set_xticks(np.arange(len(column_names)) + 0.5,
@@ -127,7 +125,4 @@ def correlation_free_entries_marking(binary_correlation_matrix: np.array,
 
     fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
                 "/../../results/correlations_path.png")
-
-    if show is True:
-        plt.show()
     return

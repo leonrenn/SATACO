@@ -54,35 +54,6 @@ def check_sufficient_statistics(SR_SR_matrix: np.array,
     return
 
 
-def calc_pearson_corr(SR_SR_matrix: np.array) -> np.array:
-    """Calculation of the Pearson correlation coefficient
-    of the signal region matrix.
-
-    Args:
-        SR_SR_matrix (np.array): Signal region matrix that
-        have entries that share events.
-
-    Returns:
-        np.array: Coefficient matrix.
-    """
-    return np.corrcoef(SR_SR_matrix, dtype=np.float32)
-
-
-def threshold_corr_matrix(correlation_matrix: np.array,
-                          threshold: float = 0.01) -> np.array:
-    """Compute correlation matrix below certain threshold.
-
-    Args:
-        correlation_matrix (np.array): Pearson correlations coefficients
-        threshold (float, optional): Threshold for allowed correlation.
-        Defaults to 0.2.
-
-    Returns:
-        np.array: Allowed correlation in binary format.
-    """
-    return correlation_matrix > threshold
-
-
 def calc_SR_sensitivity(df_event_SR: pd.DataFrame,
                         method: str = "simple",
                         calculate: bool = True) -> List[float]:
