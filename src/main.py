@@ -14,11 +14,12 @@ from tqdm import tqdm
 from exceptions.exceptions import (InvalidArgumentError,
                                    NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
+                                   NotEnoughStatistcis,
                                    SADirectoryNotFoundError,
                                    SAFileNotFoundError, SAWrongArgument)
 from utils.functions import (calc_num_combs, calc_SR_sensitivity,
-                             df_mapping_dict, indices_to_SR_names,
-                             sort_df_SR_dep_weights)
+                             check_sufficient_statistics, df_mapping_dict,
+                             indices_to_SR_names, sort_df_SR_dep_weights)
 from utils.parsing import build_parser, check_parser_input_files
 from utils.path_finder import PathFinder
 from utils.plotting import (corr_matrix_plotting,
@@ -194,28 +195,6 @@ def main() -> int:
         SR_names=non_zero_column_names,
         inv=True)
 
-    # iterate through the combs
-    combs = [comb for comb in combs]
-    for comb in tqdm(combs):
-        i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
-        correlation_matrix[i, j] = np.dot(
-            a=df_event_SR[comb[0]],
-            b=df_event_SR[comb[1]])/(np.linalg.norm(df_event_SR[comb[0]]) *
-                                     np.linalg.norm(df_event_SR[comb[1]]))
-        # fill the full matrix, but the i=j index not twice
-        if i != j:
-            correlation_matrix[j, i] = correlation_matrix[i, j]
-
-    # save in dataframe and save to parquet
-    df_correlation: pd.DataFrame = pd.DataFrame(
-        data=correlation_matrix,
-        columns=non_zero_column_names)
-
-    process_save_df_corr: Process = Process(
-        target=save_df_corr,
-        args=(df_correlation,))
-    process_save_df_corr.start()
-
     # get threshold from command line
     threshold: float
     if parser_dict["threshold"] is None:
@@ -229,6 +208,42 @@ def main() -> int:
         except InvalidArgumentError:
             print("\nThe argument for the threshold is not valid.")
             return 9
+
+    # iterate through the combs
+    combs = [comb for comb in combs]
+    i: int
+    j: int
+    vec_i: np.array
+    vec_j: np.array
+    for comb in tqdm(combs):
+        i, j = inv_mapping[comb[0]], inv_mapping[comb[1]]
+        vec_i, vec_j = df_event_SR[comb[0]], df_event_SR[comb[1]]
+        correlation_matrix[i, j] = np.dot(
+            a=vec_i,
+            b=vec_j)/(np.linalg.norm(vec_i) *
+                      np.linalg.norm(vec_j))
+        if parser_dict["statistics"] is True:
+            try:
+                check_sufficient_statistics(vec_i=vec_i,
+                                            vec_j=vec_j,
+                                            event_num=df_event_SR.shape[0],
+                                            threshold=threshold)
+            except NotEnoughStatistcis:
+                print("Not enough statistics to make overlapping"
+                      " calculations. Exit.")
+        # fill the full matrix, but the i=j index not twice
+        if i != j:
+            correlation_matrix[j, i] = correlation_matrix[i, j]
+
+    # save in dataframe and save to parquet
+    df_correlation: pd.DataFrame = pd.DataFrame(
+        data=correlation_matrix,
+        columns=non_zero_column_names)
+
+    process_save_df_corr: Process = Process(
+        target=save_df_corr,
+        args=(df_correlation,))
+    process_save_df_corr.start()
 
     process_corr_matrix_plotting: Process
     if parser_dict["no_plots"] is not True:

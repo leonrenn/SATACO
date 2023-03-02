@@ -46,7 +46,7 @@ def build_parser() -> ArgumentParser:
                         "--no_plots",
                         required=False,
                         action="store_true",
-                        help="No plots are save in the"
+                        help="No plots are saved in the"
                         "result dir.")
     parser.add_argument("-tp",
                         "--top_paths",
@@ -55,6 +55,13 @@ def build_parser() -> ArgumentParser:
                         help="Number of top paths"
                         "printed on CLI and saved"
                         "in result dir")
+    parser.add_argument("-st",
+                        "--statistics",
+                        required=False,
+                        action="store_true",
+                        help="Raise errors when not"
+                        "having collected enough statistics.\n"
+                        "Makes program much slower.")
     return parser
 
 

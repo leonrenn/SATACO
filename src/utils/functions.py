@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.stats import beta
 from tqdm import tqdm
 
 from exceptions.exceptions import NotEnoughStatistcis
@@ -43,15 +44,27 @@ def calc_num_combs(len_SR_names: int) -> int:
     return int((len_SR_names + 1) * len_SR_names/2)
 
 
-def check_sufficient_statistics(SR_SR_matrix: np.array,
+def check_sufficient_statistics(vec_i: np.array,
+                                vec_j: np.array,
                                 event_num: int,
-                                confidence: float = 0.95) -> None:
-    # TODO: Algorithm like in TACO that checks if enough data has
-    # been gathered for further staistic analysis
-    # https://gitlab.com/t-a-c-o/taco_code/-/blob/master/codes/accepter_v2.py
-    if False:
-        raise NotEnoughStatistcis
-    return
+                                threshold: float,
+                                confidence: float = 0.95,
+                                ) -> None:
+    bin_i = vec_i.astype(dtype=np.bool8).astype(np.int0)
+    bin_j = vec_j.astype(dtype=np.bool8).astype(np.int0)
+    shared_events: int = np.dot(a=bin_i,
+                                b=bin_j)
+    if shared_events > event_num * 10**(-4):
+        return
+    else:
+        F = beta.pdf(x=1-confidence,
+                     a=shared_events + 1,
+                     b=event_num - shared_events,
+                     )
+        if F < threshold:
+            return
+        else:
+            raise NotEnoughStatistcis
 
 
 def calc_SR_sensitivity(df_event_SR: pd.DataFrame,
