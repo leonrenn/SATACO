@@ -1,1 +1,1 @@
-alias SATACO="python -W ignore '${PWD}/src/main.py'"
+alias SATACO="python3 -W ignore '${PWD}/src/main.py'"
