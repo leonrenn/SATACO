@@ -141,27 +141,3 @@ def indices_to_SR_names(SR_names: List[str],
             path_list[idx] = SR_names[SR_idx]
         path_dictionary[path_idx]["path"] = path_list
     return path_dictionary
-
-
-def sort_proposed_paths(best_SR_comb: Dict,
-                        dict_SR_weights: Dict) -> Dict:
-    """Sorts proposed path after weights individual
-    that are summed to build the total weight of
-    the path.
-
-    Args:
-        best_SR_comb (Dict): Proposed path by graph
-        algorithm.
-        dict_SR_weights (Dict): Weights in a
-        dictionary.
-
-    Returns:
-        Dict: Highest path weight to lowest.
-    """
-    weighted_SR_combs: Dict = {}
-    for _, path in best_SR_comb.items():
-        weighted_SR_combs[str(path["path"])] = sum(
-            [dict_SR_weights[SR] for SR in path["path"]])
-    return dict(sorted(weighted_SR_combs.items(),
-                       key=lambda x: x[1],
-                       reverse=True))
