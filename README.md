@@ -46,24 +46,43 @@ Do not forget to set the flag [-n] in SA which provides the analysis result with
 ntuple. After that you can move the data (.root-files) from the analysis into your 
 SATACO repository.<br>
 
+For convenience purposes the script ***SATACO.sh*** is provided. Source it on the CLI:
+```sh
+source SATACO.sh
+```
+Now you will be able to use the command ***SATACO*** to run the program from everywhere in the<br>
+filesystem.
+
 Now you can use the tool in two ways:
 
 1. With the -r flag which you can provide with mulitple comma seperated root files:
 ```sh
-python src/main.py -r data/"your_data_1.root","your_data_2.root"
+SATACO -r data_folder/"your_data_1.root","your_data_2.root"
 ```
 
-2. ​With the -d flag which you can provide a hole directory with:
+2. With the -d flag which you can provide a hole directory with:
 ```sh
-python src/main.py -d data
+SATACO -d data_folder
 ```
+
+#### All Flags
+
+optional arguments:
+| Flag | Explanation |
+| --- | --- |
+| -h, --help | show this help message and exit. |
+| -r ROOT, --root ROOT | root-files as input from SimpleAnalysis Tool. |
+| -d DROOT, --droot DROOT | Directory with .root filesfrom SimpleAnalysis Tool. |
+| -t THRESHOLD, --threshold THRESHOLD | Threshold for generating binary correlation matrix. |
+| -nw, --no_weights | Force that all signal regions are treated equally in significance. |
+| -np, --no_plots | No plots are saved in theresult dir. |
+| -tp TOP_PATHS, --top_paths TOP_PATHS | Number of top pathsprinted on CLI and saved in result dir. |
+| -st, --statistics | Raise errors when nothaving collected enough statistics. Makes program much slower. |
 
 ## Results
 
-- event_SR.parquet (gzip compressed): Events in every single Signal Region that at least accepted one event of the data.
-- SR_SR.parquet (gzip compressed): Matrix of Signal Regions. Elements where compared and afterwards summed up for different Signal Regions.
-- correlations.parquet (gzip compressed): Pearson correlation matrix for the SR_SR matrix.
-- SR_SR.png: Figure of the correlations between the Signal Regions.
+- event_SR.parquet.gzip: Events in every single Signal Region that at least accepted one event of the data.
+- correlations.parquet.gzip: Pearson correlation matrix for the SR_SR matrix.
 - correlations_threshold.png: Figure of correlations of Signal Regions with applied threshold for dividing them into: correlated and uncorrelated.
 - correlations_path.png: Figure of correaltion matrix with elements marked in green that are part of the best SR combination (top 1 path).
 - signal_regions.txt: Text file of all signal regions used in the current analysis run.
