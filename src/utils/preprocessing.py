@@ -3,7 +3,6 @@ Provides functions for the main program that are used for checking
 and preprocessing the input.
 """
 import os
-import time
 from typing import List
 
 import numpy as np
