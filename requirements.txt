@@ -6,3 +6,4 @@ awkward
 tqdm
 networkx
 more-itertools
+scipy

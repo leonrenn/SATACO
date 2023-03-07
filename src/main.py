@@ -35,9 +35,6 @@ def main() -> int:
     # 0) START
     STARTTIME: float = time.time()
 
-    # delete all files from result folders
-    clear_result_dir()
-
     # print sataco letters on CLI
     sataco()
     # print info on CLI
@@ -48,6 +45,8 @@ def main() -> int:
     # 1.1) PARSE ARGUMENTS FROM CLI
     parser: ArgumentParser = build_parser()
     parser_dict: Dict[str, str] = vars(parser.parse_args())
+    # delete all files from result folders
+    clear_result_dir()
 
     # 1.2) CHECK FOR NECESSARY INPUT FILES IN PARSER
     file_paths: List[str]
