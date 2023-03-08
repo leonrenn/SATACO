@@ -53,3 +53,9 @@ class NotEnoughStatistcis(Exception):
 class InvalidArgumentError(Exception):
     """Invalid arguments as threshold.
     """
+
+
+class CorrelationMatrixFormatError(Exception):
+    """Raised when the correlation matrix 
+    is not in the correct format in the txt file.
+    """
