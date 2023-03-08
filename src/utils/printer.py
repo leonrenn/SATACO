@@ -58,7 +58,7 @@ def result(proposed_paths: Dict,
                 str(path_dict['weight']) + "): ")
             for SR in path_dict["path"]:
                 result_file.write(
-                    SR + " (weight: " +
+                    str(SR) + " (weight: " +
                     str(dict_SR_weights.get(SR)) + "), ")
 
             print(*path_dict["path"], sep=", ", end=".\n")
