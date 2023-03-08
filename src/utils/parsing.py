@@ -62,6 +62,13 @@ def build_parser() -> ArgumentParser:
                         help="Raise errors when not"
                         "having collected enough statistics.\n"
                         "Makes program much slower.")
+    parser.add_argument("-cm",
+                        "--corr_matrix",
+                        required=False,
+                        type=str,
+                        help="The correlation matrix is "
+                        "given as an input file to the "
+                        "program.")
     return parser
 
 
