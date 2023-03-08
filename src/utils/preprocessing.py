@@ -69,6 +69,7 @@ def preprocess_input(analysis_names: List[str],
     Returns:
         _type_: Event SR matrix and signal region names.
     """
+    SR_names: List[str] = []
     # list for storing events of corresponding SR
     event_SR_matrix_list: List[np.array] = []
     print("Files preprocessing:\n")
@@ -79,6 +80,7 @@ def preprocess_input(analysis_names: List[str],
             ttree = file["ntuple"]
             # signal regions are the keys of the ttree
             signal_regions = ttree.keys()
+            SR_names += signal_regions
             # signal regions with counts of events
             # that passed
             ttree_arrays = ttree.arrays()
@@ -103,4 +105,4 @@ def preprocess_input(analysis_names: List[str],
           "Number of SRs: "
           f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
 
-    return event_SR_matrix_combined, signal_regions
+    return event_SR_matrix_combined, SR_names
