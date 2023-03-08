@@ -72,9 +72,9 @@ def save_SR_names(SR_names: List[str],
     with open(sr_file_path, "w") as file:
         for sr_idx, sr in enumerate(SR_names):
             if sr_idx != len(SR_names):
-                file.write(sr+"\n")
+                file.write(str(sr)+"\n")
             else:
-                file.write(sr+"\n")
+                file.write(str(sr)+"\n")
     return
 
 
