@@ -59,3 +59,9 @@ class CorrelationMatrixFormatError(Exception):
     """Raised when the correlation matrix 
     is not in the correct format in the txt file.
     """
+
+
+class NonPreselectionInfoFound(Exception):
+    """Raised when path to preselecting
+    is not valid.
+    """

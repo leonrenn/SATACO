@@ -86,10 +86,34 @@ def calc_SR_sensitivity(df_event_SR: pd.DataFrame,
                 sensitivity.append(
                     signal_events/np.sqrt(total_event_num - signal_events))
 
-        elif method == "middle":
-            # middle
+        elif method == "from info files":
+            # TODO: more efficient ways are possible
+            sensitivity: List[float] = []
+            nData = list(df_event_SR["nData"])
+            nBkg = list(df_event_SR["nBkg"])
+            errBkg = list(df_event_SR["errBkg"])
 
-            pass
+            for SR_idx in range(len(nData)):
+                n = nData[SR_idx]
+                b = nBkg[SR_idx]
+                s = errBkg[SR_idx]
+                if n == 0.0 or b == 0.0:
+                    sensitivity.append(0.0)
+                elif n >= b:
+                    sensitivity.append(
+                        np.sqrt(2*(n *
+                                   np.log(n*(b+s**2)/(b**2 + n*s**2)) -
+                                   (b**2/s**2) *
+                                   np.log(1 + (s**2*(n - b))/(b * (b+s**2))))))
+                else:
+                    sensitivity.append(
+                        -np.sqrt(2*(n *
+                                    np.log(
+                                        n*(b+s**2)/(b**2 + n*s**2)) -
+                                    (b**2/s**2) *
+                                    np.log(
+                                        1 + (s**2*(n - b))/(b * (b+s**2))))))
+
         elif method == "likelihood":
             pass
         return sensitivity

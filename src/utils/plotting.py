@@ -24,7 +24,7 @@ def corr_matrix_plotting(correlation_matrix: np.array,
 
     # diagonal elements are painted grey (self correlating SRs),
     # white for SR correlations below threshold and black for above
-    correlation_matrix = np.array(correlation_matrix < threshold,
+    correlation_matrix = np.array(correlation_matrix > threshold,
                                   dtype=np.float32)
     # indices of lower triangle and set them to 1
     indices_lower = np.tril_indices_from(correlation_matrix)
@@ -78,7 +78,7 @@ def correlation_free_entries_marking(correlation_matrix: np.array,
     """
     # diagonal elements are painted grey (self correlating SRs),
     # white for SR correlations below threshold and black for above
-    correlation_matrix = np.array(correlation_matrix < threshold,
+    correlation_matrix = np.array(correlation_matrix > threshold,
                                   dtype=np.float32)
     # indices of lower triangle and set them to 1
     indices_lower = np.tril_indices_from(correlation_matrix)

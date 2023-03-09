@@ -3,15 +3,18 @@ Provides functions for the main program that are used for checking
 and preprocessing the input.
 """
 import os
-from typing import List
+import pathlib
+from typing import Dict, List
 
 import numpy as np
 import uproot as ur
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
 
-from exceptions.exceptions import (NonSimpleAnalysisFormat, NotARootFile,
+from exceptions.exceptions import (NonPreselectionInfoFound,
+                                   NonSimpleAnalysisFormat, NotARootFile,
                                    SAFileNotFoundError)
+from utils.preselecting import filter_SRs
 
 
 def check_for_input_correctness(file_paths: List[str]) -> List[str]:
@@ -21,17 +24,13 @@ def check_for_input_correctness(file_paths: List[str]) -> List[str]:
     Args:
         file_paths (List[str]): Paths to files that should be analyzed.
 
-    Raises:
-        SAFileNotFoundError: File was not found.
-        NotARootFile: File is not a root file.
-        NonSimpleAnalysisFormat: File has not SA format.
-
     Returns:
         List[str]: Analysis names.
     """
     analysis_names: List[str] = []
     for file_path in tqdm(file_paths):
         analysis_name: str = os.path.basename(file_path).strip(".root")
+
         analysis_names.append(analysis_name)
 
         if os.path.exists(file_path) is False:
@@ -54,11 +53,13 @@ def check_for_input_correctness(file_paths: List[str]) -> List[str]:
                   "Do not use option '-o' in simpleAnalysis.\n"
                   "Exit.")
             raise NonSimpleAnalysisFormat
+
     return analysis_names
 
 
 def preprocess_input(analysis_names: List[str],
-                     file_paths: List[str]):
+                     file_paths: List[str],
+                     parser_dict: Dict):
     """Store data from files into vectors that are later
     transformed to dataframes
 
@@ -67,23 +68,53 @@ def preprocess_input(analysis_names: List[str],
         file_paths (List[str]): Paths to the analyzed files.
 
     Returns:
-        _type_: Event SR matrix and signal region names.
+        _type_: Event SR matrix, signal region names, weights.
     """
     SR_names: List[str] = []
+    SR_weights: List[float] = []
+    approved_SR_names: List[str] = None
+    approved_weights: List[float] = None
+
     # list for storing events of corresponding SR
     event_SR_matrix_list: List[np.array] = []
     print("Files preprocessing:\n")
-    for _, file_path in enumerate(tqdm(file_paths)):
+    for idx, file_path in enumerate(tqdm(file_paths)):
+
+        # if preselecting is wanted
+        if parser_dict["preselecting"] is not None:
+            if os.path.isdir(str(pathlib.Path(__file__).parent.resolve()) +
+                             "/../../" +
+                             parser_dict["preselecting"]):
+
+                approved_SR_names, approved_weights = filter_SRs(
+                    analysis_name=analysis_names[idx],
+                    path=parser_dict["preselecting"])
+            else:
+                print("There is no preselection info under "
+                      f"{str(pathlib.Path(__file__).parent.resolve())}"
+                      "/../../"
+                      f"{parser_dict['preselecting']}")
+                raise NonPreselectionInfoFound
         # opening the file
         with ur.open(file_path) as file:
             # access to the ntuple structure
             ttree = file["ntuple"]
             # signal regions are the keys of the ttree
-            signal_regions = ttree.keys()
-            SR_names += signal_regions
+            signal_regions = list(ttree.keys())
+
             # signal regions with counts of events
             # that passed
-            ttree_arrays = ttree.arrays()
+            if approved_SR_names is not None:
+                # use only approved SR (by further analysis)
+                signal_regions = approved_SR_names
+                SR_weights += approved_weights
+            else:
+                signal_regions.remove("Event")
+                signal_regions.remove("eventWeight")
+            SR_names += signal_regions
+
+            ttree_arrays = ttree.arrays(signal_regions)
+
             # empty matrix to store data in numpy style
             events: np.array = np.empty(
                 shape=(len(ttree_arrays), len(signal_regions)),
@@ -103,6 +134,6 @@ def preprocess_input(analysis_names: List[str],
         dtype=np.float32)
     print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
           "Number of SRs: "
-          f"{event_SR_matrix_combined.shape[1] - len(analysis_names)*2}.")
+          f"{event_SR_matrix_combined.shape[1]}.")
 
-    return event_SR_matrix_combined, SR_names
+    return event_SR_matrix_combined, SR_names, SR_weights

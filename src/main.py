@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from exceptions.exceptions import (CorrelationMatrixFormatError,
                                    InvalidArgumentError,
+                                   NonPreselectionInfoFound,
                                    NonSimpleAnalysisFormat,
                                    NoParserArgumentsError, NotARootFile,
                                    NotEnoughStatistcis,
@@ -79,13 +80,16 @@ def main() -> int:
         print("Checking correctness of input:\n")
         analysis_names: List[str] = []
         try:
-            analysis_names = check_for_input_correctness(file_paths=file_paths)
+            analysis_names = check_for_input_correctness(
+                file_paths=file_paths)
         except NotARootFile:
             return 4
         except SAFileNotFoundError:
             return 5
         except NonSimpleAnalysisFormat:
             return 6
+        except NonPreselectionInfoFound:
+            return 7
 
         # 3) RUN ANALYSIS ON INPUT
 
@@ -99,12 +103,17 @@ def main() -> int:
 
         # preprocess input
         SR_names: List[str]
+        SR_approved_weights: List[float]
         event_SR_matrix_combined: np.array
-        event_SR_matrix_combined, SR_names = preprocess_input(
-            analysis_names=analysis_names,
-            file_paths=file_paths)
-        print(event_SR_matrix_combined.shape)
-        print(len(SR_names))
+        try:
+            event_SR_matrix_combined,
+            SR_names,
+            approved_weights = preprocess_input(
+                analysis_names=analysis_names,
+                file_paths=file_paths,
+                parser_dict=parser_dict)
+        except NonPreselectionInfoFound:
+            return 7
 
         # convert into dataframe
         df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
@@ -116,12 +125,7 @@ def main() -> int:
 
         # 3.2) OVERLAP CALCULATION
 
-        # for overlap calculation the events and the eventWeights
-        # are remove from dataframe
         df_event_SR = df_event_SR_matrix_combined
-        for _ in analysis_names:
-            df_event_SR = df_event_SR_matrix_combined.drop(
-                columns=["Event", "eventWeight"])
 
         # write to parquet as part of the results
         process_save_df_SR_event = Process(
@@ -176,9 +180,14 @@ def main() -> int:
         else:
             calculate = True
 
-        weights_SR: List[float] = calc_SR_sensitivity(df_event_SR=df_event_SR,
-                                                      method="simple",
-                                                      calculate=calculate)
+        if approved_weights == []:
+            weights_SR: List[float] = calc_SR_sensitivity(
+                df_event_SR=df_event_SR,
+                method="simple",
+                calculate=calculate)
+        else:
+            # from preprocessed input
+            weights_SR = approved_weights
         # sort dataframe if weights are calculated
         sorted_dict_SR_weigths: Dict = dict(
             zip(non_zero_column_names, [1]*len(non_zero_column_names)))

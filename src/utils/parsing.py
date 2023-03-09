@@ -69,6 +69,12 @@ def build_parser() -> ArgumentParser:
                         help="The correlation matrix is "
                         "given as an input file to the "
                         "program.")
+    parser.add_argument("-ps",
+                        "--preselecting",
+                        required=False,
+                        type=str,
+                        help="Preselecting SR based on info "
+                        "files of given directory.")
     return parser
 
 
