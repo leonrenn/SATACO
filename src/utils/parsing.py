@@ -27,7 +27,7 @@ def build_parser() -> ArgumentParser:
                         type=str,
                         required=False,
                         help="Directory with .root files"
-                        "from SimpleAnalysis Tool.")
+                        " from SimpleAnalysis Tool.")
     parser.add_argument("-t",
                         "--threshold",
                         type=float,
@@ -47,14 +47,14 @@ def build_parser() -> ArgumentParser:
                         required=False,
                         action="store_true",
                         help="No plots are saved in the"
-                        "result dir.")
+                        " result dir.")
     parser.add_argument("-tp",
                         "--top_paths",
                         type=int,
                         required=False,
                         help="Number of top paths"
-                        "printed on CLI and saved"
-                        "in result dir")
+                        " printed on CLI and saved"
+                        " in result dir")
     parser.add_argument("-st",
                         "--statistics",
                         required=False,

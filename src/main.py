@@ -106,12 +106,11 @@ def main() -> int:
         SR_approved_weights: List[float]
         event_SR_matrix_combined: np.array
         try:
-            event_SR_matrix_combined,
-            SR_names,
-            approved_weights = preprocess_input(
+            res = preprocess_input(
                 analysis_names=analysis_names,
                 file_paths=file_paths,
                 parser_dict=parser_dict)
+            event_SR_matrix_combined, SR_names, approved_weights = res
         except NonPreselectionInfoFound:
             return 7
 
