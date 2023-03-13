@@ -1,4 +1,4 @@
-"""This file contains functions 
+"""This file contains functions
 that preselect signal regions.
 """
 import os
@@ -14,7 +14,7 @@ from utils.functions import calc_SR_sensitivity
 def filter_SRs(analysis_name: str,
                path: str) -> Tuple:
     """Filters signal regions of given analysis
-    when given preselection flag and correct path to 
+    when given preselection flag and correct path to
     pMSSM analysis info files.
 
     Args:
@@ -22,7 +22,7 @@ def filter_SRs(analysis_name: str,
         path (str): Path to the info directory.
 
     Returns:
-        Tuple: SR regions that can be further analyzed, 
+        Tuple: SR regions that can be further analyzed,
         Weights as significances.
     """
     path: str = str(pathlib.Path(__file__).parent.resolve()) + \

@@ -113,7 +113,12 @@ def preprocess_input(analysis_names: List[str],
                 signal_regions.remove("eventWeight")
             SR_names += signal_regions
 
-            ttree_arrays = ttree.arrays(signal_regions)
+            if signal_regions != []:
+                # only accept signal regions if sr list in info files
+                # are not []
+                ttree_arrays = ttree.arrays(signal_regions)
+            else:
+                print(f"No signal regions from {file_path} are accepted.")
 
             # empty matrix to store data in numpy style
             events: np.array = np.empty(
