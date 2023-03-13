@@ -10,6 +10,8 @@ import numpy as np
 import uproot as ur
 from tqdm import tqdm
 from uproot.reading import ReadOnlyFile
+from yaspin import yaspin
+from yaspin.spinners import Spinners
 
 from exceptions.exceptions import (NonPreselectionInfoFound,
                                    NonSimpleAnalysisFormat, NotARootFile,
@@ -78,7 +80,9 @@ def preprocess_input(analysis_names: List[str],
     # list for storing events of corresponding SR
     event_SR_matrix_list: List[np.array] = []
     print("Files preprocessing:\n")
-    for idx, file_path in enumerate(tqdm(file_paths)):
+    for idx, file_path in enumerate(tqdm(file_paths,
+                                         position=0,
+                                         leave=True)):
 
         # if preselecting is wanted
         if parser_dict["preselecting"] is not None:
@@ -133,10 +137,12 @@ def preprocess_input(analysis_names: List[str],
             event_SR_matrix_list.append(events)
 
     # concatenate the matrices
-    event_SR_matrix_combined: np.array = np.concatenate(
-        event_SR_matrix_list,
-        axis=1,
-        dtype=np.float32)
+    with yaspin(Spinners.earth, text="Concatenate of SRs.") as spinner:
+        event_SR_matrix_combined: np.array = np.concatenate(
+            event_SR_matrix_list,
+            axis=1,
+            dtype=np.float32)
+        spinner.ok("\nConcatenation of SRs successfully.")
     print(f"\nNumber of events: {event_SR_matrix_combined.shape[0]}\n"
           "Number of SRs: "
           f"{event_SR_matrix_combined.shape[1]}.")

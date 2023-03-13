@@ -10,6 +10,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from yaspin import yaspin
+from yaspin.spinners import Spinners
 
 from exceptions.exceptions import (CorrelationMatrixFormatError,
                                    InvalidArgumentError,
@@ -97,7 +99,6 @@ def main() -> int:
         print("\nAnalyses SATACO runs on:")
         for analysis_name in analysis_names:
             print(f"- {analysis_name}")
-        print("\n")
 
         # 3.1) CONCATENATION OF EVENT SIGNAL REGION MATRICES
 
@@ -105,6 +106,7 @@ def main() -> int:
         SR_names: List[str]
         SR_approved_weights: List[float]
         event_SR_matrix_combined: np.array
+
         try:
             res = preprocess_input(
                 analysis_names=analysis_names,
@@ -114,13 +116,15 @@ def main() -> int:
         except NonPreselectionInfoFound:
             return 7
 
-        # convert into dataframe
-        df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
-            data=event_SR_matrix_combined,
-            dtype=np.float32)
-        # rename columns of dataframe
-        df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
-            columns=df_mapping_dict(SR_names))
+        with yaspin(Spinners.earth, text="Loading into dataframe.") as spinner:
+            # convert into dataframe
+            df_event_SR_matrix_combined: pd.DataFrame = pd.DataFrame(
+                data=event_SR_matrix_combined,
+                dtype=np.float32)
+            # rename columns of dataframe
+            df_event_SR_matrix_combined = df_event_SR_matrix_combined.rename(
+                columns=df_mapping_dict(SR_names))
+            spinner.ok("\nLoading into dataframes successfully.")
 
         # 3.2) OVERLAP CALCULATION
 
@@ -172,7 +176,7 @@ def main() -> int:
 
         # before saving rearange matrix with weights
         # generate the weights
-        print("\nGenerating weights for hereditary search:\n")
+        print("\nGenerating weights for hereditary search.")
         calculate: bool
         if parser_dict["no_weights"] is True:
             calculate = False

@@ -7,3 +7,4 @@ tqdm==4.64.0
 networkx==2.7.1
 more-itertools==9.0.0
 scipy==1.8.0
+yaspin
