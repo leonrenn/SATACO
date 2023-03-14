@@ -6,6 +6,7 @@ saved under results:
 - correlations.parquet.gzip
 - correlations_threshold.png
 - correlations_path.png
+- hisrogram_events.png
 - signal_regions.txt
 - best_SR_comb.txt
 ---------------------------------------

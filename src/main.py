@@ -28,7 +28,8 @@ from utils.loading import read_corr_matrix
 from utils.parsing import build_parser, check_parser_input_files
 from utils.path_finder import PathFinder
 from utils.plotting import (corr_matrix_plotting,
-                            correlation_free_entries_marking)
+                            correlation_free_entries_marking,
+                            histogram_plotting)
 from utils.preprocessing import check_for_input_correctness, preprocess_input
 from utils.printer import info, result, sataco, summary
 from utils.saving import (clear_result_dir, save_df_corr, save_df_SR_event,
@@ -131,10 +132,17 @@ def main() -> int:
         df_event_SR = df_event_SR_matrix_combined
 
         # write to parquet as part of the results
-        process_save_df_SR_event = Process(
+        process_save_df_SR_event: Process = Process(
             target=save_df_SR_event,
             args=(df_event_SR,))
         process_save_df_SR_event.start()
+
+        # start histogram plotting when mentioned in parser dict
+        if parser_dict["histogram"] is True and parser_dict["no_plots"] is not True:
+            process_histogram_plotting: Process = Process(
+                target=histogram_plotting,
+                args=(df_event_SR,))
+            process_histogram_plotting.start()
 
         # save opensignal regions in txt file
         save_SR_names(SR_names=SR_names,
@@ -343,14 +351,16 @@ def main() -> int:
     # 8) JOINING MULTIPROCESSES
     if parser_dict["corr_matrix"] is None:
         process_save_df_SR_event.join()
+
     process_save_df_corr.join()
 
     if parser_dict["no_plots"] is not True:
+        if parser_dict["histogram"] is True:
+            process_histogram_plotting.join()
         process_corr_matrix_plotting.join()
         process_matrix_path_plotting.join()
-        print("\nAll 4 processes joined.")
-    else:
-        print("\nAll 2 processes joined.")
+
+    print("All processes joined.")
 
     # 9) SUMMARY
     summary(STARTTIME=STARTTIME)

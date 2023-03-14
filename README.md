@@ -79,6 +79,7 @@ optional arguments:
 | -tp TOP_PATHS, --top_paths TOP_PATHS | Number of top pathsprinted on CLI and saved in result dir. |
 | -st, --statistics | Raise errors when nothaving collected enough statistics. Makes program much slower. |
 | -ps, --preselecting | Preselecting SR based on info files of given directory. |
+| -ht, --histogram | Plot a histogram for number of events per signal region. |
 
 ## Results
 

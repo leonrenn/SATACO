@@ -75,6 +75,12 @@ def build_parser() -> ArgumentParser:
                         type=str,
                         help="Preselecting SR based on info "
                         "files of given directory.")
+    parser.add_argument("-ht",
+                        "--histogram",
+                        required=False,
+                        action="store_true",
+                        help="Plot a histogram for number of "
+                        "events per signal region.")
     return parser
 
 

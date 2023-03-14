@@ -9,6 +9,7 @@ from typing import Dict, List
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 def corr_matrix_plotting(correlation_matrix: np.array,
@@ -125,4 +126,47 @@ def correlation_free_entries_marking(correlation_matrix: np.array,
 
     fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
                 "/../../results/correlations_path.png")
+    return
+
+
+def histogram_plotting(df_SR_event: pd.DataFrame) -> None:
+    column_names: List = list(df_SR_event.columns)
+    fig, (ax1, ax2) = plt.subplots(nrows=2,
+                                   ncols=1,
+                                   sharex=True)
+
+    bin_events = np.zeros(shape=(len(column_names,)))
+    weighted_events = np.zeros(shape=(len(column_names,)))
+
+    for SR_idx, SR in enumerate(column_names):
+        weighted_events[SR_idx] = np.sum(df_SR_event[SR])
+        bin_events[SR_idx] = np.sum(
+            np.array(
+                object=df_SR_event[SR]).astype(dtype=np.bool8).astype(np.int0))
+
+    ax1.set_xticks(np.arange(len(column_names)),
+                   minor=False)
+    ax1.plot(bin_events,
+             marker="_",
+             markersize="20",
+             linewidth="10",
+             linestyle=" ",
+             label="Population of SRs (not weighted)")
+    ax2.plot(weighted_events,
+             marker="_",
+             markersize="20",
+             linestyle=" ",
+             linewidth="10",
+             label="Population of SRs (weighted with MC weights)")
+    # labels on x axis
+    ax1.set_xticklabels(column_names,
+                        minor=False,
+                        rotation=45)
+    ax2.set_xlabel("Signal Regions")
+    ax1.set_ylabel("Number of Events")
+    ax2.set_ylabel("Number of Events with Weights")
+    plt.legend()
+    fig.tight_layout()
+    fig.savefig(str(pathlib.Path(__file__).parent.resolve()) +
+                "/../../results/historgram_events.png")
     return
